@@ -28,7 +28,7 @@ for f in file_list:
 				text = line
 				firstline = 0
 			elif line.startswith('>'):
-				text = text + '-'
+				text = text + 'NNNNNNNNNN' #indicate possible gaps between chr, plasmids, shotgun pieces, etc
 			elif line!= "\n": #skip empty lines within fasta
 				text = text + line
 

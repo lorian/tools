@@ -25,7 +25,7 @@ for line in mfa:
 		firstline = 0
 	elif triggered == 1:
 		if line.startswith('>'):
-			text = text + '-'
+			text = text + 'NNNNNNNNNN' #indicate possible gaps between chr, plasmids, shotgun pieces, etc
 		triggered = 0
 	elif line == "\n":
 		triggered = 1
