@@ -1,7 +1,7 @@
 # Process large metagenomic reference dataset:
 #	Make names fully readable by replacing spaces with _ (done)
 #	Discard virus genomes (done)
-#	Combine all chromosomal entries for a single species using 10 N's
+#	Combine all chromosomal entries for a single species using 10 N's (done)
 #	Assemble plasmids??
 #	Split into files of less than 3.6 billion characters for bowtie2 index
 
@@ -17,53 +17,40 @@ for arg in iterarg:
 		filename = filename + " " + arg
 
 mfa = open(filename,'r')
-text = ""
-plasmids = ""
-genomes = dict([])
-neither = ""
+
+# Open files
+fa_genomes = open('genome_processed.fa', 'w')
+fa_genomes.seek(0) #overwrite if it exists
+fa_plasmids = open('plasmids_processed.fa', 'w')
+fa_plasmids.seek(0) #overwrite if it exists
+
 last_species = ""
+last_type = ""
 
 for line in mfa:
-	if line.startswith('>'):
-		text = text + line.replace (" ", "_")
+	if line[0] == '>': # fasta name
+		line = line.replace (" ", "_")
 		if line.find('VIRL') != -1: #ignore viruses
-			pass
+			last_type = 'virus'
 		elif line.find('plasmid') != -1: #just copy plasmids
-			plasmids = plasmids + line
-		elif line.find('genome') != -1: #attempt to "assemble" genomes
+			last_type = 'plasmid'
+			fa_plasmids.write(line)
+		else: #attempt to "assemble" genomes
+			last_type = 'genome'
 			species,x,y = line.partition('|')
 			if last_species == species:
-				genomes[species] = genomes[species] + 'NNNNNNNNNN' + line
+				fa_genomes.write('NNNNNNNNNN') # potential gap
 			else:
-				genomes[species] = line
+				fa_genomes.write(line)
 				last_species = species
-		else:
-			neither = neither + line
-#	else:
-#		text = text + line
+	else: #actual fasta content
+		if last_type == 'genome':
+			fa_genomes.write(line)
+		elif last_type == 'plasmid':
+			fa_plasmids.write(line)
 
-# copy all fasta names to file
-fa_genomes = open('genome_names.txt', 'w')
-fa_genomes.seek(0) #overwrite if it exists
-for g in genomes:
-	fa_genomes.write(g + '\n' + genomes[g] + '\n')
+# close files
 fa_genomes.truncate()
 fa_genomes.close()
-
-fa_plasmids = open('plasmid_names.txt', 'w')
-fa_plasmids.seek(0) #overwrite if it exists
-fa_plasmids.write(plasmids)
 fa_plasmids.truncate()
 fa_plasmids.close()
-
-fa_other = open('other_names.txt', 'w')
-fa_other.seek(0) #overwrite if it exists
-fa_other.write(neither)
-fa_other.truncate()
-fa_other.close()
-
-#fa = open(filename[:filename.rfind('.')] + '_processed.fa', 'w')
-#fa.seek(0) #overwrite if it exists
-#fa.write(text)
-#fa.truncate()
-#fa.close()
