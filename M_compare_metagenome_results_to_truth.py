@@ -10,7 +10,7 @@ filename = sys.argv[1]
 print filename
 dataset_name = sys.argv[2] # which dataset to compare against (simLC, simLC_ab, i100)
 if sys.argv[3]:
-	source = sys.argv[3 # express or gasic
+	source = sys.argv[3] # express or gasic
 else:
 	source = 'express'
 
@@ -356,20 +356,33 @@ true_abundance = np.array([float(i) for i in dataset[1]])
 results_file = open(filename,'r')
 results = csv.reader(results_file, 'excel-tab')
 results_data = [r for r in results]
-results_data = results_data[1:]
-results_data.sort(key=lambda x:x[1])
+if source == 'express': # express species names are in second column
+	results_data = results_data[1:] #remove header row
+	results_data.sort(key=lambda x:x[1])
+	species = zip(*results_data)[1]
+elif source == 'gasic': # gasic species names are in first column
+	results_data = results_data[1:] #remove header row
+	results_data.sort(key=lambda x:x[0])
+	species = zip(*results_data)[0]
 
-species = zip(*results_data)[1]
-est_counts = np.array([float(i) for i in zip(*results_data)[6]]) # used when dataset abundances are given in raw counts
-fpkm = np.array([float(i) for i in zip(*results_data)[10]]) # used when dataset abundances are given as percentages
-fpkm_total = np.sum(fpkm)
-fpkm_abundance = fpkm*100/fpkm_total
+if source == 'express':
+	est_counts = np.array([float(i) for i in zip(*results_data)[6]]) # used when dataset abundances are given in raw counts
+	fpkm = np.array([float(i) for i in zip(*results_data)[10]]) # used when dataset abundances are given as percentages
+	fpkm_total = np.sum(fpkm)
+	est_abundance = fpkm*100/fpkm_total
+elif source == 'gasic':
+	est_counts = np.array([float(i) for i in zip(*results_data)[2]]) # used when dataset abundances are given in raw counts
+	print est_counts
+	total_counts = np.sum(est_counts)
+	print total_counts
+	est_abundance = np.array([100*float(i)/total_counts for i in zip(*results_data)[2]]) # used when dataset abundances are given as percentages
+	print est_abundance
 
 if dataset_name == 'simLC': # use est_counts
 	diff = 100*abs(true_abundance - est_counts)/true_abundance
 	print diff
 else: # use FPKMs
-	diff = 100*abs(true_abundance - fpkm_abundance)/true_abundance
+	diff = 100*abs(true_abundance - est_abundance)/true_abundance
 
 print "Average relative error: {0}".format(np.mean(diff))
 diff_sq = [d*d/10000 for d in diff]
