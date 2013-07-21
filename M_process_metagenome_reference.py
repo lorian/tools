@@ -3,7 +3,7 @@
 #	Discard virus genomes (done)
 #	Combine all chromosomal entries for a single species using 10 N's (done)
 #	Assemble plasmids?? (no)
-#	Split into files of less than 3.6 billion characters for bowtie2 index
+#	Split into files of less than 3.6 billion characters for bowtie2 index (done)
 #		note that the plasmid file never gets too big, so I don't bother checking if I should split it
 
 import sys
@@ -28,8 +28,8 @@ line_count = 0
 
 # Open files
 
-genomes_string = filename.rsplit('.', 1)[0] + "_genomes_{0}.fa"
-plasmids_string = filename.rsplit('.', 1)[0] + "_plasmids_{0}.fa"
+genomes_string = filename.rsplit('.', 1)[0] + "_genomes_{0}.mfa" #mfa file format is for compatibility with my mass-indexing script
+plasmids_string = filename.rsplit('.', 1)[0] + "_plasmids_{0}.mfa"
 
 fa_genomes = open(genomes_string.format(file_count_g), 'wt')
 fa_genomes.seek(0) #overwrite if it exists
