@@ -2,10 +2,14 @@
 #	Make names fully readable by replacing spaces with _ (done)
 #	Discard virus genomes (done)
 #	Combine all chromosomal entries for a single species using 10 N's (done)
-#	Assemble plasmids??
+#	Assemble plasmids?? (no)
 #	Split into files of less than 3.6 billion characters for bowtie2 index
+#		note that the plasmid file never gets too big, so I don't bother checking if I should split it
 
 import sys
+import os
+
+split_size = 3500000000 # 3.5gb
 
 filename = ""
 iterarg = iter(sys.argv)
@@ -18,10 +22,18 @@ for arg in iterarg:
 
 mfa = open(filename,'r')
 
+file_count_g = 0
+file_count_p = 0
+line_count = 0
+
 # Open files
-fa_genomes = open('genome_processed.fa', 'w')
+
+genomes_string = filename.rsplit('.', 1)[0] + "_genomes_{0}.fa"
+plasmids_string = filename.rsplit('.', 1)[0] + "_plasmids_{0}.fa"
+
+fa_genomes = open(genomes_string.format(file_count_g), 'wt')
 fa_genomes.seek(0) #overwrite if it exists
-fa_plasmids = open('plasmids_processed.fa', 'w')
+fa_plasmids = open(plasmids_string.format(file_count_p), 'wt')
 fa_plasmids.seek(0) #overwrite if it exists
 
 last_species = ""
@@ -41,6 +53,14 @@ for line in mfa:
 			if last_species == species:
 				fa_genomes.write('NNNNNNNNNN') # potential gap
 			else:
+				# Split file past size limit, but only between species entries
+				fa_genomes.flush()
+				filesize = os.fstat( fa_genomes.fileno() )
+				if filesize.st_size > split_size:
+					fa_genomes.close()
+					file_count_g += 1
+					fa_genomes = open(genomes_string.format(file_count_g), 'wt')
+
 				fa_genomes.write(line)
 				last_species = species
 	else: #actual fasta content
