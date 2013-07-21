@@ -12,12 +12,14 @@ for arg in iterarg:
 		dirname = arg #avoid extra space at beginning
 	else:
 		dirname = dirname + " " + arg
+if dirname == "" or dirname == " ":
+	dirname = os.getcwd() #current working directory
 
 file_list = os.listdir(dirname)
 
 for f in file_list:
 	if f.find('.mfa') != -1:
-		basename = f[:-4]
+		basename = f.rsplit('.', 1)[0]
 		print "Making index for {0}".format(f)
 
 		proc = subprocess.Popen(['bowtie2-build', f, basename],stdout=subprocess.PIPE)
