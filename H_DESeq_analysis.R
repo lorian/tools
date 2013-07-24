@@ -15,7 +15,12 @@ condition =  factor( c( "organoid","organoid","organoid-DH12","organoid","hES","
 print("Preparing data")
 ensembl_cds = newCountDataSet(ensemblTable,condition)
 ensembl_cds_size = estimateSizeFactors(ensembl_cds)
-ensembl_cds_disp = estimateDispersions(ensembl_cds_size)
+#ensembl_cds_disp = estimateDispersions(ensembl_cds_size)
+
+# Export expression results of processing
+#print("Writing dispersions to file")
+#write.table(ensembl_cds_disp, file = "r_ensembl_disp.txt", row.names=TRUE, col.names=TRUE, sep = "\t")
+#print("Done writing table")
 
 # Filter data
 #print("Filtering data")
@@ -50,7 +55,9 @@ ensembl_vsd = varianceStabilizingTransformation( ensembl_cds_blind )
 #heatmap.2(exprs(ensembl_vsd)[select,], dendrogram = c("column"),col = hmcol, trace="none", labRow = "", margin=c(10, 6))
 
 # Export expression results of processing
-write.table(ensembl_vsd, file = "r_ensembl_vsd.txt", row.names=TRUE, col.names=TRUE, sep = "\t")
+#print("Writing vsd to file")
+#write.table(ensembl_vsd, file = "r_ensembl_vsd.txt", row.names=TRUE, col.names=TRUE, sep = "\t")
+#print("Done writing table")
 
 # Display similarity heatmap
 #print("Similarity matrix")
@@ -64,9 +71,9 @@ write.table(ensembl_vsd, file = "r_ensembl_vsd.txt", row.names=TRUE, col.names=T
 #print(plotPCA(ensembl_vsd, intgroup=c('condition'), ntop=100000))
 
 # R PCA
-#print("R PCA")
-#fit <- princomp(exprs(ensembl_vsd))
-#print(summary(fit)) # print variance accounted for
+print("R PCA")
+fit <- princomp(exprs(ensembl_vsd))
+print(summary(fit)) # print variance accounted for
 #print(loadings(fit)) # pc loadings
 #plot(fit,type="lines") # scree plot
 #print(fit$scores) # the principal components
