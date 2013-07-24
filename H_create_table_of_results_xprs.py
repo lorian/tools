@@ -5,7 +5,8 @@ import csv
 import numpy as np
 import os
 
-r_list = []
+count_list = []
+fpkm_list = []
 suffix = sys.argv[1] # _ensembl normally
 dir_list = [x for x in os.walk('.').next()[1] if x.endswith(suffix)]
 
@@ -20,29 +21,40 @@ for d in dir_list:
 		results_data = results_data[1:]
 		results_data.sort(key=lambda x:x[1])
 		eff_counts = [int(round(float(i))) for i in zip(*results_data)[7]] # for making R input table
-
+		fpkm = [float(i) for i in zip(*results_data)[10]] # for making fpkm master table
 
 		# add sample name to BEGINNING of list
 		eff_counts.reverse()
 		eff_counts.append(basename)
 		eff_counts.reverse()
 
-		if r_list == []: # first column
+		fpkm.reverse()
+		fpkm.append(basename)
+		fpkm.reverse()
+
+		if count_list == []: # first column
 			column_labels = [i for i in zip(*results_data)[1]] # gene names
 			column_labels.reverse()
 			column_labels.append('genes')
 			column_labels.reverse()
 
-			r_list.append(column_labels)
+			count_list.append(column_labels)
 
-		r_list.append(eff_counts)
+		count_list.append(eff_counts)
+
+		if fpkm_list == []: # first column
+			fpkm_list.append(column_labels)
+		fpkm_list.append(fpkm)
 
 	else:
 		print "ERROR: no results.xprs in directory {0}".format(d)
 
 print "Array headers:"
-for r in r_list:
+for r in fpkm_list:
 	print "Column {0} has {1} rows".format(r[0],len(r))
 
-r_table = np.vstack(r_list)
-np.savetxt('r_table' +suffix+ '.txt', np.transpose(r_table), delimiter='\t', fmt="%s")
+count_table = np.vstack(count_list)
+np.savetxt('r_table' +suffix+ '.txt', np.transpose(count_table), delimiter='\t', fmt="%s")
+
+fpkm_table = np.vstack(fpkm_list)
+np.savetxt('fpkm_table' +suffix+ '.txt', np.transpose(fpkm_table), delimiter='\t', fmt="%s")
