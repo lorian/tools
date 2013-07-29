@@ -7,26 +7,27 @@ library("gplots")
 #args = raw_args[6:length(raw_args)]
 
 # Create source data
-print("Creating source data")
-ensemblTable = read.table("r_table_ensembl.txt",header=TRUE,row.names=1,sep="\t")
-condition =  factor( c( "organoid","organoid","organoid-DH12","organoid","hES","hES","control","teratoma","control","teratoma","organoid-DH1","differentiated","teratoma","control","hES","control","control","teratoma","control","organoid","differentiated") )
+#print("Creating source data")
+#ensemblTable = read.table("r_table_ensembl.txt",header=TRUE,row.names=1,sep="\t")
+#condition =  factor( c( "organoid","organoid","organoid-DH12","organoid","hES","hES","control","teratoma","control","teratoma","organoid-DH1","differentiated","teratoma","control","hES","control","control","teratoma","control","organoid","differentiated") )
+#condition =  factor( c( "organoid","organoid","organoid","organoid","hES","hES","control","teratoma","control","teratoma","organoid","differentiated","teratoma","control","hES","control","control","teratoma","control","organoid","differentiated") )
 
 # Prepare data
-print("Preparing data")
-ensembl_cds = newCountDataSet(ensemblTable,condition)
-ensembl_cds_size = estimateSizeFactors(ensembl_cds)
+#print("Preparing data")
+#ensembl_cds = newCountDataSet(ensemblTable,condition)
+#ensembl_cds_size = estimateSizeFactors(ensembl_cds)
 #ensembl_cds_disp = estimateDispersions(ensembl_cds_size)
 
 # Export expression results of processing
-#print("Writing dispersions to file")
-#write.table(ensembl_cds_disp, file = "r_ensembl_disp.txt", row.names=TRUE, col.names=TRUE, sep = "\t")
+#print("Writing sizes to file")
+#write.table(sizeFactors(ensembl_cds_disp), file = "r_ensembl_size.txt", row.names=TRUE, col.names=TRUE, sep = "\t")
 #print("Done writing table")
 
 # Filter data
 #print("Filtering data")
-#rs = rowSums ( counts ( ensembl_cds_disp ))
-#data_filter = (rs > quantile(rs, probs=0.3))
-#ensembl_filt = ensembl_cds_disp[ data_filter, ]
+rs = rowSums ( counts ( ensembl_cds_disp ))
+data_filter = (rs > quantile(rs, probs=0.3))
+ensembl_filt = ensembl_cds_disp[ data_filter, ]
 #ensembl_filt_binom = nbinomTest( ensembl_filt, "control","organoid" )
 #hist(ensembl_filt_binom$pval, breaks=100, col="skyblue", border="slateblue", main="")
 
@@ -35,6 +36,75 @@ ensembl_cds_size = estimateSizeFactors(ensembl_cds)
 #ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "control","organoid" )
 #hist(ensembl_cds_binom$pval, breaks=100, col="skyblue", border="slateblue", main="")
 #plotMA(ensembl_cds_binom)
+
+# List significant genes
+#print("Significantly different genes")
+#ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+#write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="organoid_control_sig_genes_0.1.csv" )
+
+# Unfiltered significant genes
+ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "hES","teratoma" )
+ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="hES_teratoma_sig_genes_0.1.csv" )
+ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "hES","organoid" )
+ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="hES_organoid_sig_genes_0.1.csv" )
+ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "hES","differentiated" )
+ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="hES_differentiated_sig_genes_0.1.csv" )
+ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "hES","control" )
+ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="hES_control_sig_genes_0.1.csv" )
+ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "teratoma","organoid" )
+ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="teratoma_organoid_sig_genes_0.1.csv" )
+ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "teratoma","differentiated" )
+ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="teratoma_differentiated_sig_genes_0.1.csv" )
+ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "teratoma","control" )
+ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="teratoma_control_sig_genes_0.1.csv" )
+ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "organoid","differentiated" )
+ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="organoid_differentiated_sig_genes_0.1.csv" )
+ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "organoid","control" )
+ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="organoid_control_sig_genes_0.1.csv" )
+ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "differentiated","control" )
+ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="differentiated_control_sig_genes_0.1.csv" )
+
+# Filtered significant genes
+ensembl_cds_binom = nbinomTest( ensembl_filt, "hES","teratoma" )
+ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="hES_teratoma_filtered_sig_genes_0.1.csv" )
+ensembl_cds_binom = nbinomTest( ensembl_filt, "hES","organoid" )
+ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="hES_organoid_filtered_sig_genes_0.1.csv" )
+ensembl_cds_binom = nbinomTest( ensembl_filt, "hES","differentiated" )
+ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="hES_differentiated_filtered_sig_genes_0.1.csv" )
+ensembl_cds_binom = nbinomTest( ensembl_filt, "hES","control" )
+ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="hES_control_filtered_sig_genes_0.1.csv" )
+ensembl_cds_binom = nbinomTest( ensembl_filt, "teratoma","organoid" )
+ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="teratoma_organoid_filtered_sig_genes_0.1.csv" )
+ensembl_cds_binom = nbinomTest( ensembl_filt, "teratoma","differentiated" )
+ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="teratoma_differentiated_filtered_sig_genes_0.1.csv" )
+ensembl_cds_binom = nbinomTest( ensembl_filt, "teratoma","control" )
+ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="teratoma_control_filtered_sig_genes_0.1.csv" )
+ensembl_cds_binom = nbinomTest( ensembl_filt, "organoid","differentiated" )
+ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="organoid_differentiated_filtered_sig_genes_0.1.csv" )
+ensembl_cds_binom = nbinomTest( ensembl_filt, "organoid","control" )
+ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="organoid_control_filtered_sig_genes_0.1.csv" )
+ensembl_cds_binom = nbinomTest( ensembl_filt, "differentiated","control" )
+ensembl_sig = ensembl_cds_binom[ensembl_cds_binom$padj< 0.1,]
+write.csv( ensembl_sig[ order(ensembl_sig$pval), ], file="differentiated_control_filtered_sig_genes_0.1.csv" )
 
 # Compare p-values of filtered data
 #print("p-values of filtered data")
@@ -47,9 +117,9 @@ ensembl_cds_size = estimateSizeFactors(ensembl_cds)
 #legend("topright", fill=rev(colori), legend=rev(names(colori)))
 
 # Display heatmap
-print("Heatmap")
-ensembl_cds_blind = estimateDispersions( ensembl_cds_size, method="blind" )
-ensembl_vsd = varianceStabilizingTransformation( ensembl_cds_blind )
+#print("Heatmap")
+#ensembl_cds_blind = estimateDispersions( ensembl_cds_size, method="blind" )
+#ensembl_vsd = varianceStabilizingTransformation( ensembl_cds_blind )
 #select = order(rowMeans(counts(ensembl_cds_size)), decreasing=TRUE)[1:1000]
 #hmcol = colorRampPalette(brewer.pal(9, "GnBu"))(100)
 #heatmap.2(exprs(ensembl_vsd)[select,], dendrogram = c("column"),col = hmcol, trace="none", labRow = "", margin=c(10, 6))
@@ -71,9 +141,9 @@ ensembl_vsd = varianceStabilizingTransformation( ensembl_cds_blind )
 #print(plotPCA(ensembl_vsd, intgroup=c('condition'), ntop=100000))
 
 # R PCA
-print("R PCA")
-fit <- princomp(exprs(ensembl_vsd))
-print(summary(fit)) # print variance accounted for
+#print("R PCA")
+#fit <- princomp(exprs(ensembl_vsd))
+#print(summary(fit)) # print variance accounted for
 #print(loadings(fit)) # pc loadings
 #plot(fit,type="lines") # scree plot
 #print(fit$scores) # the principal components
