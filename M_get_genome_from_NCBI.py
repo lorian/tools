@@ -34,7 +34,7 @@ def get_genome(species_orig):
 	else:
 		print "SPECIES: {0}".format(species_orig)
 
-	mfa = open(filename) # new fasta file for every species
+	mfa = open(filename, 'w') # new fasta file for every species
 	mfa.seek(0)
 
 	# get genome ID
@@ -63,7 +63,7 @@ def get_genome(species_orig):
 	try:
 		page_fasta = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&query_key=' + query_key + '&WebEnv=' + web_env + '&rettype=fasta&retmode=text')
 	except:
-		print "FAILED TO GET PAGE FOR {0}".format(species)
+#		print "FAILED TO GET PAGE FOR {0}".format(species)
 		return 0
 
 	# copy chromosome fastas, trying to skip duplicates
@@ -80,7 +80,7 @@ def get_genome(species_orig):
 				skip = True
 
 	# get query key and web env for plasmid
-	page_nucleotide = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=genome&db=nuccore&id=' + genome_id + '&term=gene+in+plasmid[prop]&cmd=neighbor_history')
+	page_nucleotide = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=genome&db=nuccore&id=' + str(genome_id) + '&term=gene+in+plasmid[prop]&cmd=neighbor_history')
 	for line in page_nucleotide:
 		line = string.replace(line,"\t","")
 		if line.startswith("<QueryKey>"):
@@ -214,7 +214,7 @@ i100_species_list = [
 'Rhodopseudomonas palustris HaA2',
 'Burkholderia ambifaria AMMD']
 
-ignore_ID_list = [ #NCBI taxonomy id
+ID_list = [ #NCBI taxonomy id
 316058,
 288000,
 269798,

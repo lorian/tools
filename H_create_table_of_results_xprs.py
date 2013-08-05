@@ -7,12 +7,23 @@ import os
 
 count_list = []
 fpkm_list = []
-suffix = sys.argv[1] # _ensembl normally
-dir_list = [x for x in os.walk('.').next()[1] if x.endswith(suffix)]
+try:
+	suffix = sys.argv[1] # _ensembl normally
+except:
+	suffix = ""
+
+if suffix != "":
+	dir_list = [x for x in os.walk('.').next()[1] if x.endswith(suffix)]
+else:
+	dir_list = [x for x in os.walk('.').next()[1]]
+
 
 for d in dir_list:
 	if "results.xprs" in os.listdir(d):
-		basename = d[:-len(suffix)]
+		if suffix != "":
+			basename = d[:-len(suffix)]
+		else:
+			basename = d
 		print "Processing {0}".format(basename)
 
 		results_file = open(os.path.join(d, 'results.xprs'), 'r')
@@ -54,7 +65,7 @@ for r in fpkm_list:
 	print "Column {0} has {1} rows".format(r[0],len(r))
 
 count_table = np.vstack(count_list)
-np.savetxt('r_table' +suffix+ '.txt', np.transpose(count_table), delimiter='\t', fmt="%s")
+np.savetxt('r_table_newfused' +suffix+ '.txt', np.transpose(count_table), delimiter='\t', fmt="%s")
 
 fpkm_table = np.vstack(fpkm_list)
-np.savetxt('fpkm_table' +suffix+ '.txt', np.transpose(fpkm_table), delimiter='\t', fmt="%s")
+np.savetxt('fpkm_table_newfused' +suffix+ '.txt', np.transpose(fpkm_table), delimiter='\t', fmt="%s")
