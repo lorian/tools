@@ -20,7 +20,7 @@ def parse_line(line,species,entries):
 			print "\tSkipping {0}".format(name)
 			return False
 	elif line.startswith('<'): # xml instead of fasta
-		print "ERROR: EMPTY PAGE"
+		print "ERROR: FASTA EMPTY PAGE"
 		return False
 
 	return line # normal line of fasta
@@ -29,7 +29,7 @@ def get_genome(species_orig):
 	species = species_orig.lower()
 	filename = species.replace (" ", "_").replace('/',"") + '.mfa'
 
-	if os.path.isfile(filename) and os.path.getsize(filename) > 100: # don't re-run if file exists and is sensible size
+	if os.path.isfile(filename) and os.path.getsize(filename) > 200: # don't re-run if file exists and is sensible size
 		return
 	else:
 		print "SPECIES: {0}".format(species_orig)
@@ -37,21 +37,37 @@ def get_genome(species_orig):
 	mfa = open(filename, 'w') # new fasta file for every species
 	mfa.seek(0)
 
-	# get genome ID
-	if not 'ID_list' in globals(): #if I don't already have a list
-		page_genome = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=genome&term=' + urllib2.quote(species))
-		genome_id = ""
-		for line in page_genome:
-			if line.startswith("<Id>"):
-				if genome_id != "":
-					print "Duplicate IDs for {0}; skipping.".format(species)
-					return
-				genome_id = line[4:-6]
-	else:
-		genome_id = ID_list[species_list.index(species_orig)]
+	if 'ID_list' in globals():
+		# species ID
+		tax_id = ID_list[species_list.index(species_orig)]
 
-	# get query key and web env for chromosome
-	page_nucleotide = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=genome&db=nuccore&id={0}&term=gene+in+chromosome[prop]&cmd=neighbor_history'.format(genome_id))
+		# get species name
+		try:
+			page_tax = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=taxonomy&id={0}'.format(tax_id))
+		except:
+			print "FAILED TO GET TAXONOMY PAGE FOR {0}".format(species)
+			return 0
+
+		for line in page_tax:
+			line = string.replace(line,"\t","") # unfortunately this xml page uses spaces
+			if line.startswith('    <ScientificName>'):
+				species = line[20:-18].lower()
+				print 'Actual species name: {0}'.format(species)
+				break
+
+	# get genome ID
+	page_genome = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=genome&term=' + urllib2.quote(species))
+	genome_id = ""
+	for line in page_genome:
+		line = string.replace(line,"\t","")
+		if line.startswith("<Id>"):
+			if genome_id != "":
+				print "Duplicate IDs for {0}; skipping.".format(species)
+				return
+			genome_id = line[4:-6]
+
+	# get query key and web env
+	page_nucleotide = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=genome&db=nuccore&id={0}&term=gene+in+chromosome[prop]+OR+gene+in+plasmid[prop]+OR+wgs[prop]&cmd=neighbor_history'.format(genome_id))
 	for line in page_nucleotide:
 		line = string.replace(line,"\t","")
 		if line.startswith("<QueryKey>"):
@@ -59,14 +75,15 @@ def get_genome(species_orig):
 		if line.startswith("<WebEnv>"):
 			web_env = line[8:-10]
 
-	# get fasta for chromosome
+	# get fastas
 	try:
-		page_fasta = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&query_key=' + query_key + '&WebEnv=' + web_env + '&rettype=fasta&retmode=text')
+		page_fasta = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&query_key={0}&WebEnv={1}&rettype=fasta&retmode=text'.format(query_key,web_env))
+		print  'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&query_key={0}&WebEnv={1}&rettype=fasta&retmode=text'.format(query_key,web_env)
 	except:
-#		print "FAILED TO GET PAGE FOR {0}".format(species)
+		print "FAILED TO GET FASTA PAGE FOR {0}".format(species)
 		return 0
 
-	# copy chromosome fastas, trying to skip duplicates
+	# copy fastas, trying to skip duplicates
 	fasta = ""
 	skip = False
 	entries = []
@@ -78,7 +95,7 @@ def get_genome(species_orig):
 				fasta = fasta + nl
 			else:
 				skip = True
-
+	'''
 	# get query key and web env for plasmid
 	page_nucleotide = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=genome&db=nuccore&id=' + str(genome_id) + '&term=gene+in+plasmid[prop]&cmd=neighbor_history')
 	for line in page_nucleotide:
@@ -103,7 +120,7 @@ def get_genome(species_orig):
 				fasta = fasta + nl
 			else:
 				skip = True
-
+	'''
 	fasta = fasta + "\n"
 	mfa.write(fasta) # write fastas to file
 	mfa.truncate()
@@ -214,7 +231,7 @@ i100_species_list = [
 'Rhodopseudomonas palustris HaA2',
 'Burkholderia ambifaria AMMD']
 
-ID_list = [ #NCBI taxonomy id
+inactive_ID_list = [ #NCBI taxonomy id
 316058,
 288000,
 269798,
@@ -340,7 +357,7 @@ species_list = [
 "Rubrobacter xylanophilus DSM 9941",
 "Thiobacillus denitrificans ATCC 25259",
 "Bacillus cereus NVH391-98",
-"Burkholderia sp. sp.strain 383",
+"Burkholderia sp. 383", # removed sp.strain
 "Caldicellulosiruptor accharolyticus UNDEF",
 "Chloroflexus aurantiacus J-10-fl",
 "Clostridium beijerincki NCIMB 8052",
@@ -355,14 +372,14 @@ species_list = [
 "Thermoanaerobacter ethanolicus 39E",
 "Actinobacillus succinogenes 130Z",
 "Burkholderia ambifaria AMMD",
-"Chlorobium limicola DSMZ 245(T)",
+"Chlorobium limicola DSMZ 245T", #removed ()
 "Deinococcus geothermalis DSM11300",
 "Jannaschia sp. CCS1",
 "Kineococcus radiotolerans SRS30216",
 "Methylobacillus flagellatus strain KT",
 "Nitrobacter winogradskyi Nb-255",
-"Novosphingobium aromaticivorans DSM 12444 (F199)",
-"Pelodictyon phaeoclathratiforme BU-1 (DSMZ 5477(T))",
+"Novosphingobium aromaticivorans DSM 12444 F199", #removed ()
+"Pelodictyon phaeoclathratiforme BU-1 DSMZ 5477T", #removed ()
 "Polaromonas sp. JS666",
 "Pseudoalteromonas atlantica T6c",
 "Rhodopseudomonas palustris BisB5",
@@ -421,14 +438,14 @@ species_list = [
 "Pediococcus pentosaceus ATCC 25745",
 "Pelodictyon luteolum UNDEF",
 "Prochlorococcus marinus str. MIT 9312",
-"Prosthecochloris aestuarii SK413/DSMZ 271(t)",
+"Prosthecochloris aestuarii SK413/DSMZ 271t", #removed ()
 "Prosthecochloris sp. BS1",
 "Saccharophagus degradans 2-40",
 "Shewanella sp. W3-18-1",
 "Syntrophomonas wolfei Goettingen",
 "Thiomicrospira crunogena XCL-2",
 "Burkholderia xenovorans LB400",
-"Chlorobium vvibrioforme f. thiosulfatophilum DSMZ 265(T)",
+"Chlorobium vvibrioforme f. thiosulfatophilum DSMZ 265T", #removed ()
 "Chromohalobacter salexigens DSM3043",
 "Enterococcus faecium DO",
 "Lactobacillus delbrueckii bulgaricus ATCC BAA-365",
@@ -437,7 +454,7 @@ species_list = [
 "Methanosarcina barkeri Fusaro",
 "Pseudomonas fluorescens PfO-1",
 "Psychrobacter arcticum 273-4",
-"Synechococcus sp. PCC 7942 (elongatus)",
+"Synechococcus sp. PCC 7942 elongatus", #removed ()
 "Thermobifida fusca YX",
 "Oenococcus oeni PSU-1",
 "Rhodobacter sphaeroides 2.4.1",

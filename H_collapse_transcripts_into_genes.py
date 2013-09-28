@@ -11,7 +11,24 @@ with open('ensembl_gene_ids.txt','r') as id_file:
 	id_data = [r for r in ids]
 	id_list = dict(id_data)
 
-d = 'r_table_newfused.txt'
+with open('ensembl_gene_names.txt','r') as name_file:
+	names = csv.reader(name_file, 'excel-tab')
+	name_data = [r for r in names]
+	name_list = dict(name_data)
+
+# Replace ensembl ids with gene names, where they exist
+named_dict = dict()
+for transcript in id_list:
+	try:
+		name = name_list[id_list[transcript]]
+	except:
+		named_dict[transcript] = transcript
+	if name == "":
+		named_dict[transcript] = id_list[transcript]
+	else:
+		named_dict[transcript] = name
+
+d = 'fpkm_table_newfused.txt'
 basename = d.rsplit('.')[0]
 print "Processing {0}".format(basename)
 
@@ -26,7 +43,7 @@ header = ""
 debug = open('debug.txt','w')
 for r in results_data:
 	try:
-		g = id_list[r[0]]
+		g = named_dict[r[0]]
 	except:
 		g = r[0]
 		debug.write(str(g)+"\n")
@@ -43,7 +60,7 @@ for r in results_data:
 
 print "Unique genes: {0}\nRepeated genes: {1}".format(new_genes,repeated_genes)
 
-with open(basename+ '_genes.txt','wb') as csvfile:
+with open(basename+ '_genenames.txt','wb') as csvfile:
 	update_writer = csv.writer(csvfile, delimiter='\t', quoting=csv.QUOTE_MINIMAL)
 	update_writer.writerow(header)
 	for r in updated_results:
