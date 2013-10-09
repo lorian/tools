@@ -1,7 +1,8 @@
 # source("../../compbio_tools/H_DESeq_analysis.R")
+# source("H_DESeq_analysis.R")
 library("DESeq")
 library("RColorBrewer")
-#library("gplots")
+library("gplots")
 library('corpcor')
 #library('nFactors')
 #library("ggplot2")
@@ -13,7 +14,7 @@ library('corpcor')
 dataPrep <- function() {
 	# Create source data
 	print("Creating source data")
-	ensemblTable <<- read.table("r_table_newfused_genenames.txt",header=TRUE,row.names=1,sep="\t")
+	ensemblTable <<- read.table("r_table_allalign_quick.txt",header=TRUE,row.names=1,sep="\t")
 	condition <<-  factor( c( "organoid","differentiated","organoid","hES","organoid",'hES','background','teratoma','control','differentiated','hES','teratoma','control','organoid','teratoma','control','hES','organoid','organoid','control','differentiated','organoid','organoid','organoid','organoid','background','teratoma','control','control','differentiated'))
 #	condition <<-  factor( c( "organoid","differentiated","organoid","hES","organoid",'hES','background','teratoma','control','contaminated','hES','teratoma','control','organoid','teratoma','control','hES','organoid','contaminated','control','differentiated','organoid','organoid','organoid','organoid','background','teratoma','control','control','differentiated'))
 #	condition <<-  factor( c( "organoid-DH8","differentiated-DH5","organoid-DH12","hES-DH6","organoid-DH22",'hES-DH7','background-DH25','teratoma-DH9','control-HC1','differentiated-DH2','hES-DH3','teratoma-DH13','control-HC5','organoid-DH20','teratoma-DH14','control-HC4','hES-DH26','organoid-DH16','organoid-DH1','control-HC6','differentiated-DH23','organoid-DH15','organoid-DH18','organoid-DH10','organoid-DH4','background-DH24','teratoma-DH11','control-HC2','control-HC3','differentiated-DH21'))
@@ -22,7 +23,7 @@ dataPrep <- function() {
 	print("Preparing data")
 	ensembl_cds <<- newCountDataSet(ensemblTable,condition)
 	ensembl_cds_size <<- estimateSizeFactors(ensembl_cds)
-#	ensembl_cds_disp <<- estimateDispersions(ensembl_cds_size)
+	ensembl_cds_disp <<- estimateDispersions(ensembl_cds_size)
 
 	# Filter data
 #	print("Filtering data")
@@ -34,7 +35,7 @@ dataPrep <- function() {
 	# Blind data
 	print("Blind data prep")
 	ensembl_cds_blind <<- estimateDispersions( ensembl_cds_size, method="blind" )
-#	ensembl_vsd <<- varianceStabilizingTransformation( ensembl_cds_blind )
+	ensembl_vsd <<- varianceStabilizingTransformation( ensembl_cds_blind )
 }
 
 examineFilter <- function() {
@@ -118,10 +119,10 @@ heatmapPlot <- function() {
 	print("Heatmap")
 	select = order(rowMeans(counts(ensembl_cds_size)), decreasing=TRUE)[1:5000]
 	hmcol = colorRampPalette(brewer.pal(9, "GnBu"))(100)
-	pdf('r_heatmap_genes.pdf')
-	heatmap.2(exprs(ensembl_vsd)[select,], dendrogram = c("column"),col = hmcol, rowVal = "", trace="none", margin=c(10, 6))
+	pdf('r_heatmap_quick.pdf')
+	heatmap.2(exprs(ensembl_vsd)[select,], dendrogram = c("column"),col = hmcol, trace="none", labRow = "", margin=c(10, 6))
 	dev.off()
-	heatmap.2((exprs(ensembl_vsd)/2)[select,], dendrogram = c("column"),col = hmcol, rowVal = "", trace="none", margin=c(10, 6))
+#	heatmap.2((exprs(ensembl_vsd))[select,], dendrogram = c("column"),col = hmcol, rowVal = "", trace="none", margin=c(10, 6))
 }
 
 heatmapGenes <- function() {
@@ -150,19 +151,19 @@ similarityPlot <- function() {
 	mat = as.matrix( dists )
 	hmcol = colorRampPalette(brewer.pal(9, "GnBu"))(100)
 	rownames(mat) = colnames(mat) = with(pData(ensembl_vsd), paste(colnames(ensemblTable), sep=" : "))
-	pdf('r_similarity_genes.pdf')
+	pdf('r_similarity_quick.pdf')
 	heatmap.2(mat, trace="none", col = rev(hmcol), margin=c(13, 13))
 	dev.off()
-	heatmap.2(mat, trace="none", col = rev(hmcol), margin=c(13, 13))
+#	heatmap.2(mat, trace="none", col = rev(hmcol), margin=c(13, 13))
 }
 
 deseqPCA <- function() {
 	# Principle Component Analysis plot
 	print("DESeq PCA")
-	pdf('r_PCA_individual_finalgenes.pdf')
-	print(plotPCA(ensembl_vsd, intgroup=c('condition'), ntop=42859))
+	pdf('r_PCA_quick.pdf')
+	print(plotPCA(ensembl_vsd, intgroup=c('condition'), ntop=120000))
 	dev.off()
-	print(plotPCA(ensembl_vsd, intgroup=c('condition'), ntop=42859)) # 42859 genes, 120000 transcripts
+#	print(plotPCA(ensembl_vsd, intgroup=c('condition'), ntop=120000)) # 42859 genes, 120000 transcripts
 }
 
 rFactorAnalysis <- function() {
@@ -198,16 +199,19 @@ rPCA <- function() {
 	# R PCA
 	print("R PCA w/out VSD")
 	ncounts <- t( t(counts(ensembl_cds_blind)) / sizeFactors(ensembl_cds_blind) ) # does not include dispersions!
-	pca <- prcomp.shrink(t(ncounts))
-	print(summary(pca)) # print variance accounted for
-	print(loadings(pca)) # pc loadings
+	blah <<- cov.shrink(ncounts)
+	#print blah
+
+	#pca <- prcomp.shrink(t(ncounts))
+	#print(summary(pca)) # print variance accounted for
+	#print(loadings(pca)) # pc loadings
 #	plot(pca,type="lines") # scree plot
-	print(pca$scores) # the principal components
+	#print(pca$scores) # the principal components
 #	biplot(pca)
 
 #	pdf('r_PCA_withnames.pdf')
-	plot(pca$x[,1],pca$x[,2],type="p",col=as.character('red'))
-	text(pca$x[,1],pca$x[,2],labels=rownames(pca$x))
+	#plot(pca$x[,1],pca$x[,2],type="p",col=as.character('red'))
+	#text(pca$x[,1],pca$x[,2],labels=rownames(pca$x))
 #	dev.off()
 
 	# Export component and loading information
@@ -261,13 +265,13 @@ calcProb <- function() {
 	print(format(prob_smaller, scientific = TRUE, digits = 10))
 }
 
-dataPrep()
+#dataPrep()
 
 #binomDist()
-#heatmapPlot()
+heatmapPlot()
 #heatmapGenes()
-#similarityPlot()
-#deseqPCA()
+similarityPlot()
+deseqPCA()
 #allCombos()
-rPCA()
+#rPCA()
 #calcProb()

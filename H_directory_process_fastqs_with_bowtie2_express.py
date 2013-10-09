@@ -29,6 +29,13 @@ def express():
 		print "Running express on {0}".format(basename)
 		proc = subprocess.Popen(['express', '-f0.75', '-o' + basename + suffix, 'fused_ensembl_updated_cdna.fa', basename +'_a.SAM'])
 
+def express_torque():
+	# run express on each SAM file, in parallel, using torque
+	for f in file_list:
+		basename = f.rsplit('.',1)[0]
+		print "Running express via torque on {0}".format(basename)
+		proc = subprocess.Popen(['qsub', '-v BASENAME="' +basename+ '",SUFFIX="' +suffix+ '"', 'H_torque_directory_process_fastqs.sh'])
+
 def prep_sam():
 	# prep each file for alignment viewing, in parallel
 	for f in file_list:
@@ -51,5 +58,6 @@ def filestuff():
 
 
 #bowtie2()
-express()
+#express()
+express_torque()
 #prep_sam()

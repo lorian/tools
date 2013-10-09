@@ -8,7 +8,7 @@ import os
 count_list = []
 fpkm_list = []
 try:
-	suffix = sys.argv[1] # _ensembl normally
+	suffix = sys.argv[1] # _quick currently
 except:
 	suffix = ""
 
@@ -19,7 +19,7 @@ else:
 
 
 for d in dir_list:
-	if "results.xprs" in os.listdir(d):
+	if "results.xprs" in os.listdir(d) and d != "HC2_duodenum_a":
 		if suffix != "":
 			basename = d[:-len(suffix)]
 		else:
@@ -31,7 +31,15 @@ for d in dir_list:
 		results_data = [r for r in results]
 		results_data = results_data[1:]
 		results_data.sort(key=lambda x:x[1])
-		eff_counts = [int(round(float(i))) for i in zip(*results_data)[7]] # for making R input table
+#		eff_counts = [int(round(float(i if not numpy.isnan(i) else 0.0))) for i in zip(*results_data)[7]] # for making R input table
+		try:
+			eff_counts = [int(round(float(i))) for i in zip(*results_data)[7]] # for making R input table
+		except ValueError:
+			for i in zip(*results_data)[7]:
+				try:
+					int(round(float(i)))
+				except ValueError:
+					print i
 		fpkm = [float(i) for i in zip(*results_data)[10]] # for making fpkm master table
 
 		# add sample name to BEGINNING of list
@@ -65,7 +73,7 @@ for r in fpkm_list:
 	print "Column {0} has {1} rows".format(r[0],len(r))
 
 count_table = np.vstack(count_list)
-np.savetxt('r_table_newfused' +suffix+ '.txt', np.transpose(count_table), delimiter='\t', fmt="%s")
+np.savetxt('r_table_allalign' +suffix+ '.txt', np.transpose(count_table), delimiter='\t', fmt="%s")
 
 fpkm_table = np.vstack(fpkm_list)
-np.savetxt('fpkm_table_newfused' +suffix+ '.txt', np.transpose(fpkm_table), delimiter='\t', fmt="%s")
+np.savetxt('fpkm_table_allalign' +suffix+ '.txt', np.transpose(fpkm_table), delimiter='\t', fmt="%s")

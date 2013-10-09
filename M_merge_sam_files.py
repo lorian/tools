@@ -29,6 +29,7 @@ header_sam.close()
 full_sam = open('combined_file.sam','w')
 shutil.copyfileobj(open('combined_header.sam','r'), full_sam)
 for name in filenames:
-	os.system('samtools view -S -o {0}_justbody.txt {0}'.format(name))
+	if not os.path.isfile(name + '_justbody.txt'): #don't recreate body file if it already exists from previous failed runs
+		os.system('samtools view -S -o {0}_justbody.txt {0}'.format(name))
 	shutil.copyfileobj(open(name + '_justbody.txt','r'), full_sam)
 full_sam.close()

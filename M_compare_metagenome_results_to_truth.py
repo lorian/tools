@@ -8,13 +8,13 @@ np.set_printoptions(precision=4)
 
 filename = sys.argv[1]
 print filename
-dataset_name = sys.argv[2] # which dataset to compare against (simLC, simLC_ab, i100)
+dataset_name = sys.argv[2] # which dataset to compare against (simLC_orig, simLC_ab, simLC_new, i100)
 if sys.argv[3]:
 	source = sys.argv[3] # express or gasic
 else:
 	source = 'express'
 
-if dataset_name == 'simLC':
+if dataset_name == 'simLC_orig':
 	dataset = np.array(zip(*[
 ("Actinobacillus succinogenes 130Z", 252),
 ("Alkalilimnicola ehrlichei MLHE-1", 373),
@@ -246,6 +246,122 @@ elif dataset_name == 'simLC_ab':
 ("Xylella_fastidiosa_Ann-1",2.51),
 ("Xylella_fastidiosa_Dixon",1.04)
 ]))
+elif dataset_name == 'simLC_new': #modified species names used in gasic run
+	dataset = np.array(zip(*[
+("Actinobacillus succinogenes 130Z", 252),
+("Alkalilimnicola ehrlichei MLHE-1", 373),
+("Alkaliphillus metalliredigenes UNDEF", 489),
+("Anabaena variabilis ATCC 29413", 855),
+("Anaeromyxobacter dehalogenans 2CP-C", 584),
+("Arthrobacter sp. FB24", 570),
+("Azotobacter vinelandii AvOP", 650),
+("Bacillus cereus NVH391-98", 520),
+("Bifidobacterium longum DJO10A", 288),
+("Bradyrhizobium sp. BTAi1", 9277),
+("Brevibacterium linens BL2", 542),
+("Burkholderia ambifaria AMMD", 955),
+("Burkholderia cenocepacia AU 1054", 879),
+("Burkholderia cenocepacia HI2424", 956),
+("Burkholderia sp. 383", 1074),
+("Burkholderia vietnamiensis G4", 992),
+("Burkholderia xenovorans LB400", 1149),
+("Caldicellulosiruptor accharolyticus UNDEF", 367),
+("Chlorobium limicola DSMZ 245T", 381),
+("Chlorobium phaeobacteroides DSM 266", 359),
+("Chlorobium vvibrioforme f. thiosulfatophilum DSMZ 265T", 199),
+("Chloroflexus aurantiacus J-10-fl", 679),
+("Chromohalobacter salexigens DSM3043", 454),
+("Clostridium beijerincki NCIMB 8052", 737),
+("Clostridium thermocellum ATCC 27405", 461),
+("Crocosphaera watsonii WH 8501", 812),
+("Cytophaga hutchinsonii ATCC 33406", 5168),
+("Dechloromonas aromatica RCB", 537),
+("Deinococcus geothermalis DSM11300", 415),
+("Desulfitobacterium hafniense DCB-2", 769),
+("Desulfovibrio desulfuricans G20", 484),
+("Ehrlichia canis Jake", 196),
+("Ehrlichia chaffeensis sapulpa", 150),
+("Enterococcus faecium DO", 359),
+("Exiguobacterium UNDEF 255-15", 377),
+("Ferroplasma acidarmanus fer1", 238),
+("Frankia sp. CcI3", 645),
+("Frankia sp. EAN1pec", 1109),
+("Geobacter metallireducens GS-15", 515),
+("Haemophilus somnus 129PT", 232),
+("Jannaschia sp. CCS1", 543),
+("Kineococcus radiotolerans SRS30216", 566),
+("Lactobacillus brevis ATCC 367", 177),
+("Lactobacillus casei ATCC 334", 362),
+("Lactobacillus delbrueckii bulgaricus ATCC BAA-365", 195),
+("Lactobacillus gasseri ATCC 33323", 244),
+("Lactococcus lactis cremoris SK11", 301),
+("Leuconostoc mesenteroides mesenteroides ATCC 8293", 235),
+("Magnetococcus sp. MC-1", 504),
+("Marinobacter aquaeolei VT8", 547),
+("Mesorhizobium sp. BNC1", 567),
+("Methanococcoides burtonii DSM6242", 268),
+("Methanosarcina barkeri Fusaro", 545),
+("Methanospirillum hungatei JF-1", 429),
+("Methylobacillus flagellatus strain KT", 365),
+("Moorella thermoacetica ATCC 39073", 674),
+("Nitrobacter hamburgensis UNDEF", 630),
+("Nitrobacter winogradskyi Nb-255", 427),
+("Nitrosococcus oceani UNDEF", 409),
+("Nitrosomonas eutropha C71", 314),
+("Nitrosospira multiformis ATCC 25196", 378),
+("Nocardioides sp. JS614", 636),
+("Novosphingobium aromaticivorans DSM 12444 F199", 520),
+("Oenococcus oeni PSU-1", 182),
+("Paracoccus denitrificans PD1222", 585),
+("Pediococcus pentosaceus ATCC 25745", 217),
+("Pelobacter carbinolicus DSM 2380", 489),
+("Pelobacter propionicus DSM 2379", 508),
+("Pelodictyon luteolum UNDEF", 250),
+("Pelodictyon phaeoclathratiforme BU-1 DSMZ 5477T", 402),
+("Polaromonas sp. JS666", 733),
+("Prochlorococcus marinus str. MIT 9312", 183),
+("Prochlorococcus sp. NATL2A", 253),
+("Prosthecochloris aestuarii SK413/DSMZ 271t", 282),
+("Prosthecochloris sp. BS1", 483),
+("Pseudoalteromonas atlantica T6c", 588),
+("Pseudomonas fluorescens PfO-1", 730),
+("Pseudomonas putida F1", 675),
+("Pseudomonas syringae B728a", 746),
+("Psychrobacter arcticum 273-4", 327),
+("Psychrobacter cryopegella UNDEF", 422),
+("Rhodobacter sphaeroides 2.4.1", 514),
+("Rhodoferax ferrireducens UNDEF", 599),
+("Rhodopseudomonas palustris BisA53", 636),
+("Rhodopseudomonas palustris BisB18", 699),
+("Rhodopseudomonas palustris BisB5", 575),
+("Rhodopseudomonas palustris HaA2", 28861),
+("Rhodospirillum rubrum ATCC 11170", 559),
+("Rubrobacter xylanophilus DSM 9941", 409),
+("Saccharophagus degradans 2-40", 582),
+("Shewanella amazonensis SB2B", 536),
+("Shewanella baltica OS155", 621),
+("Shewanella frigidimarina NCMB400", 551),
+("Shewanella putefaciens UNDEF", 565),
+("Shewanella sp. ANA-3", 664),
+("Shewanella sp. MR-7", 568),
+("Shewanella sp. PV-4", 524),
+("Shewanella sp. W3-18-1", 533),
+("Silicibacter sp. TM1040", 469),
+("Sphingopyxis alaskensis RB2256", 438),
+("Streptococcus suis 89/1591", 263),
+("Streptococcus thermophilus LMD-9", 178),
+("Synechococcus sp. PCC 7942 elongatus", 316),
+("Syntrophobacter fumaroxidans MPOB", 606),
+("Syntrophomonas wolfei Goettingen", 314),
+("Thermoanaerobacter ethanolicus 39E", 315),
+("Thermobifida fusca YX", 434),
+("Thiobacillus denitrificans ATCC 25259", 395),
+("Thiomicrospira crunogena XCL-2", 274),
+("Thiomicrospira denitrificans ATCC 33889", 277),
+("Trichodesmium erythraeum IMS101", 977),
+("Xylella fastidiosa Ann-1", 2836),
+("Xylella fastidiosa Dixon", 601)
+]))
 elif dataset_name == 'i100':
 	dataset = np.array(zip(*[
 ("acinetobacter_baumannii_sdf",0.99),
@@ -372,15 +488,15 @@ if source == 'express':
 	est_abundance = fpkm*100/fpkm_total
 elif source == 'gasic':
 	est_counts = np.array([float(i) for i in zip(*results_data)[2]]) # used when dataset abundances are given in raw counts
-	print est_counts
+	print "Estimated counts of results: {0}".format(est_counts)
 	total_counts = np.sum(est_counts)
-	print total_counts
 	est_abundance = np.array([100*float(i)/total_counts for i in zip(*results_data)[2]]) # used when dataset abundances are given as percentages
-	print est_abundance
+	print "Estimated abundances of results: {0}".format(est_abundance)
 
-if dataset_name == 'simLC': # use est_counts
+print "True values: {0}".format(true_abundance)
+if dataset_name == 'simLC_orig' or dataset_name == 'simLC_new': # use est_counts
 	diff = 100*abs(true_abundance - est_counts)/true_abundance
-	print diff
+	print "Error: {0}".format(diff)
 else: # use FPKMs
 	diff = 100*abs(true_abundance - est_abundance)/true_abundance
 
