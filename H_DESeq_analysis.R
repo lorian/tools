@@ -16,11 +16,11 @@ library('psy')
 dataPrep <- function() {
 	# Create source data
 	print("Creating source data")
-	ensemblTable <<- read.table("r_table_allalign_a_genenames.txt",header=TRUE,row.names=1,sep="\t")
+	ensemblTable <<- read.table("r_table_newfused_genenames.txt",header=TRUE,row.names=1,sep="\t")
 
 #	condition <<- factor(c("organoid","organoid","differentiated","control","background","organoid","teratoma","hES","organoid","differentiated","hES","organoid","control","differentiated","organoid","teratoma","control","organoid","organoid","teratoma","control","organoid","control","teratoma","organoid","differentiated","background","control","hES","hES")) #_quick
-	condition <<-  factor( c( "organoid","teratoma","background","organoid","hES","hES","teratoma","organoid","organoid","differentiated","control","differentiated","differentiated","organoid","organoid","differentiated","teratoma","control","hES","teratoma","control","organoid","control","organoid","control","background","organoid","organoid","hES")) #_a without HC2
-#	condition <<-  factor( c( "organoid","differentiated","organoid","hES","organoid",'hES','background','teratoma','control','contaminated','hES','teratoma','control','organoid','teratoma','control','hES','organoid','contaminated','control','differentiated','organoid','organoid','organoid','organoid','background','teratoma','control','control','differentiated')) #_genes
+#	condition <<-  factor( c( "organoid","teratoma","background","organoid","hES","hES","teratoma","organoid","organoid","differentiated","control","differentiated","differentiated","organoid","organoid","differentiated","teratoma","control","hES","teratoma","control","organoid","control","organoid","control","background","organoid","organoid","hES")) #_a without HC2
+	condition <<-  factor( c( "organoid","differentiated","organoid","hES","organoid",'hES','background','teratoma','control','contaminated','hES','teratoma','control','organoid','teratoma','control','hES','organoid','contaminated','control','differentiated','organoid','organoid','organoid','organoid','background','teratoma','control','control','differentiated')) #_genes
 #	condition <<-  factor( c( "organoid-DH8","differentiated-DH5","organoid-DH12","hES-DH6","organoid-DH22",'hES-DH7','background-DH25','teratoma-DH9','control-HC1','differentiated-DH2','hES-DH3','teratoma-DH13','control-HC5','organoid-DH20','teratoma-DH14','control-HC4','hES-DH26','organoid-DH16','organoid-DH1','control-HC6','differentiated-DH23','organoid-DH15','organoid-DH18','organoid-DH10','organoid-DH4','background-DH24','teratoma-DH11','control-HC2','control-HC3','differentiated-DH21'))
 
 	# Prepare data
@@ -133,22 +133,27 @@ heatmapGenes <- function() {
 	# Display heatmap. TABLE MUST USE GENE NAMES, NOT TRANSCRIPT NAMES
 	print("Heatmap")
 	# Prep gene list by replacing newlines with \\b","\\b
-#	geneList = paste(c("\\bLrig5\\b","\\bLrig1\\b","\\bAscl2\\b","\\bLyz1\\b","\\bSox9\\b","\\bAxin2\\b","\\bCD44\\b"),collapse="|") # Jenson Fig S3b
-#	geneList = paste(c("\\bAxin2\\b","\\bMath1\\b","\\bMuc2\\b","\\bLyz1\\b","\\bPla2g2a\\b","\\bMMP7\\b","\\bWnt3a\\b"),collapse="|") # Figure 3
-#	geneList = paste(c("\\bSox1\\b","\\bSox10\\b","\\bPax6\\b","\\bNestin\\b","\\bSox2\\b"),collapse="|") # Neuronal
+	geneList = paste(c("\\bFKBP9\\b","\\bGLUD1\\b","\\bKRT19\\b","\\bKRT8\\b","\\bIGFBP3\\b","\\bFKBP9\\b","\\bPERP\\b","\\bCDX1\\b","\\bCDX2\\b","\\bPDX1\\b","\\bGATA4\\b","\\bSOX17\\b","\\bHHEX\\b","\\bSOX2\\b","\\bNES\\b","\\bNEUROG3\\b","\\bPAX6\\b","\\bSOX1\\b","\\bSOX10\\b","\\bLEFTY1\\b","\\bESRRG\\b","\\bBMP1\\b","\\bCXCR4\\b","\\bDKK1\\b","\\bFOXC1\\b","\\bGATA3\\b","\\bKIT\\b","\\bLYZ\\b","\\bATOH1\\b","\\bMIXL1\\b","\\bMMP7\\b","\\bMUC2\\b","\\bPLA2G2A\\b","\\bSOX9\\b","\\bT\\b","\\bWNT3A\\b","\\bHNF4A\\b","\\bONECUT1\\b","\\bONECUT2\\b","\\bHOXA1\\b","\\bHOXA2\\b","\\bHOXC5\\b","\\bLRIG1\\b","\\bCER1\\b","\\bGREM2\\b","\\bCXCR4\\b","\\bEPCAM\\b","\\bFOXA2\\b","\\bSERPINA1\\b","\\bAFP\\b","\\bALB\\b","\\bASCL2\\b","\\bATOH1\\b","\\bAXIN2\\b","\\bCD44\\b"),collapse="|") #list of all
+#	geneList = paste(c("\\bFKBP9\\b","\\bGLUD1\\b","\\bKRT19\\b","\\bKRT8\\b","\\bIGFBP3\\b","\\bFKBP9\\b","\\bPERP\\b"),collapse="|") #shortlist dark
+#	geneList = paste(c("\\bCDX1\\b","\\bCDX2\\b","\\bPDX1\\b","\\bGATA4\\b","\\bSOX17\\b","\\bHHEX\\b","\\bSOX2\\b"),collapse="|") #shortlist pattern
+#	geneList = paste(c("\\bNES\\b","\\bNEUROG3\\b","\\bPAX6\\b","\\bSOX1\\b","\\bSOX10\\b"),collapse="|") #shortlist neuronal
+#	geneList = paste(c("\\bLEFTY1\\b","\\bESRRG\\b","\\bBMP1\\b","\\bCXCR4\\b","\\bDKK1\\b","\\bFOXC1\\b","\\bGATA3\\b","\\bKIT\\b"),collapse="|") #shortlist other
+#	geneList = paste(c("\\bLYZ\\b","\\bATOH1\\b","\\bMIXL1\\b","\\bMMP7\\b","\\bMUC2\\b","\\bPLA2G2A\\b","\\bSOX9\\b","\\bT\\b","\\bWNT3A\\b"),collapse="|") #shortlist4
+#	geneList = paste(c("\\bHNF4A\\b","\\bONECUT1\\b","\\bONECUT2\\b","\\bHOXA1\\b","\\bHOXA2\\b","\\bHOXC5\\b","\\bLRIG1\\b"),collapse="|") #shortlist3
+#	geneList = paste(c("\\bCER1\\b","\\bGREM2\\b","\\bCXCR4\\b","\\bEPCAM\\b","\\bFOXA2\\b"),collapse="|") #shortlist2
+#	geneList = paste(c("\\bSERPINA1\\b","\\bAFP\\b","\\bALB\\b","\\bASCL2\\b","\\bATOH1\\b","\\bAXIN2\\b","\\bCD44\\b"),collapse="|") #shortlist1
 #	geneList = paste(c("\\bTDX1\\b","\\bSox2\\b","\\bCD44\\b","\\bPDX1\\b","\\bCDX1\\b","\\bCDX2\\b","\\bHOXC5\\b","\\bT\\b","\\bMixl1\\b","\\bCXCR4\\b","\\bHHEX\\b","\\bFOXA2\\b","\\bCERB\\b","\\bSOX17\\b","\\bHOXA1\\b","\\bGATA4\\b","\\bHNF4a\\b","\\bEpcam\\b","\\bHOXA2\\b","\\bAFP\\b","\\bALB\\b","\\bA1AT\\b","\\bHNF4ALPHA\\b","\\bCK18\\b","\\bHNF6\\b","\\bHLXB9\\b","\\bNGN3\\b"),collapse="|") # Patterning
-	geneList = paste(c("\\bADAM19\\b","\\bAPOA1\\b","\\bAPOE\\b","\\bBAMBI\\b","\\bBMP2\\b","\\bBMP7\\b","\\bCDKN1C\\b","\\bCER1\\b","\\bCOL5A2\\b","\\bCOL4A5\\b","\\bCOL9A2\\b","\\bCRIP1\\b","\\bCXCR4\\b","\\bDAB2\\b","\\bDKK1\\b","\\bDKK3\\b","\\bEOMES\\b","\\bEPHA2\\b","\\bESRRG\\b","\\bEYA1\\b","\\bFKBP9\\b","\\bFOXA1\\b","\\bFOXA2\\b","\\bFOXC1\\b","\\bFZD4\\b","\\bGAD1\\b","\\bGATA3\\b","\\bGATA4\\b","\\bGATA6\\b","\\bGLIS3\\b","\\bGLUD1\\b","\\bGLUD2\\b","\\bGSC\\b","\\bH2AFY2\\b","\\bHHEX\\b","\\bHSZFP36\\b","\\bID1\\b","\\bID3\\b","\\bIGF2\\b","\\bIGFBP3\\b","\\bKIT\\b","\\bKRT19\\b","\\bKRT8\\b","\\bLEFTY1\\b","\\bLEFTY2\\b","\\bLHX1\\b","\\bMANEA\\b","\\bMANEAL\\b","\\bMIXL1\\b","\\bMSX2\\b","\\bNID2\\b","\\bNODAL\\b","\\bNRP1\\b","\\bOTX2\\b","\\bPDZK1\\b","\\bPERP\\b","\\bPPOX\\b","\\bSOX17\\b","\\bSYTL5\\b","\\bTBC1D9\\b","\\bTNNC1\\b","\\bTYRO3\\b"),collapse="|") # Spence Wells ST1b
+#	geneList = paste(c("\\bADAM19\\b","\\bAPOA1\\b","\\bAPOE\\b","\\bBAMBI\\b","\\bBMP2\\b","\\bBMP7\\b","\\bCDKN1C\\b","\\bCER1\\b","\\bCOL5A2\\b","\\bCOL4A5\\b","\\bCOL9A2\\b","\\bCRIP1\\b","\\bCXCR4\\b","\\bDAB2\\b","\\bDKK1\\b","\\bDKK3\\b","\\bEOMES\\b","\\bEPHA2\\b","\\bESRRG\\b","\\bEYA1\\b","\\bFKBP9\\b","\\bFOXA1\\b","\\bFOXA2\\b","\\bFOXC1\\b","\\bFZD4\\b","\\bGAD1\\b","\\bGATA3\\b","\\bGATA4\\b","\\bGATA6\\b","\\bGLIS3\\b","\\bGLUD1\\b","\\bGLUD2\\b","\\bGSC\\b","\\bH2AFY2\\b","\\bHHEX\\b","\\bHSZFP36\\b","\\bID1\\b","\\bID3\\b","\\bIGF2\\b","\\bIGFBP3\\b","\\bKIT\\b","\\bKRT19\\b","\\bKRT8\\b","\\bLEFTY1\\b","\\bLEFTY2\\b","\\bLHX1\\b","\\bMANEA\\b","\\bMANEAL\\b","\\bMIXL1\\b","\\bMSX2\\b","\\bNID2\\b","\\bNODAL\\b","\\bNRP1\\b","\\bOTX2\\b","\\bPDZK1\\b","\\bPERP\\b","\\bPPOX\\b","\\bSOX17\\b","\\bSYTL5\\b","\\bTBC1D9\\b","\\bTNNC1\\b","\\bTYRO3\\b"),collapse="|") # Spence Wells ST1b
 #	geneList = paste(c("\\bAXIN2\\b","\\bDUOX2\\b","\\bKLF5\\b","\\bKRT20\\b","\\bLGR5\\b","\\bMEP1A\\b","\\bMGAM\\b","\\bMUC13\\b","\\bMUC2\\b","\\bOLFM4\\b","\\bSLC15A1\\b","\\bSOX9\\b","\\bTERT\\b","\\bVIL1\\b","\\bVILL\\b","\\bREG4\\b","\\bMUC17\\b","\\bSLC15A1\\b","\\bEPCAM\\b","\\bGUCA2A\\b","\\bCLCA4\\b","\\bTFF2\\b"),collapse="|")
 
 	rows = grep(geneList,featureNames(ensembl_vsd),value=FALSE)
-	print(rows)
 	cols_cat <- c(19,25,1,22,24,18,3,23,14,5,10,2,30,21) #categorized grouping of org and diff samples ()
 	cols_pair <- c(19,10,25,2,14,30,5,21) #pairwise grouping of org and diff samples ()
 #	selected_vsd = exprs(ensembl_vsd)[rows,cols]
 	hmcol = colorRampPalette(brewer.pal(9, "GnBu"))(100)
 #	norm_vsd = 100*selected_vsd/rowSums(selected_vsd)
 
-	pdf('r_heatmap_a_spenceST1b.pdf',width=10, height=10)
+	pdf('r_heatmap_noa_alllist.pdf',width=10, height=10)
 	heatmap.2(exprs(ensembl_vsd)[rows,],col = hmcol, trace="none", margin=c(15, 6))
 #	heatmap.2(selected_vsd, dendrogram = c("none"),col = hmcol, trace="none", margin=c(15, 6), Colv = F)
 	dev.off()
@@ -183,9 +188,9 @@ screePlot <- function() {
 deseqPCA <- function() {
 	# Principle Component Analysis plot
 	print("DESeq PCA")
-	pdf('r_PCA_a.pdf')
-	print(plotPCA(ensembl_vsd, intgroup=c('condition'), ntop=120000))
-	dev.off()
+#	pdf('r_PCA_genenames.pdf')
+	print(plotPCA(ensembl_vsd, intgroup=c('condition'), ntop=42859))
+#	dev.off()
 #	print(plotPCA(ensembl_vsd, intgroup=c('condition'), ntop=120000)) # 42859 genes, 120000 transcripts
 }
 
@@ -197,8 +202,8 @@ rFactorAnalysis <- function() {
 	# plot factor 1 by factor 2
 	load <- fit$loadings[,1:2]
 
-	cond_color = factor(c("orange","orange","yellow","black","pink","orange","red","blue","orange","yellow","blue","orange","black","yellow","orange","red","black","orange","orange","red","black","orange","black","red","orange","yellow","pink","black","blue","blue")) #_quick
-#	cond_color = factor( c( "orange","red","pink","orange","blue","blue","red","orange","orange","yellow","black","yellow","yellow","orange","orange","yellow","red","black","blue","red","black","orange","black","orange","black","pink","orange","orange","blue")) #_a without HC2
+#	cond_color = factor(c("orange","orange","yellow","black","pink","orange","red","blue","orange","yellow","blue","orange","black","yellow","orange","red","black","orange","orange","red","black","orange","black","red","orange","yellow","pink","black","blue","blue")) #_quick
+	cond_color = factor( c( "orange","red","pink","orange","blue","blue","red","orange","orange","yellow","black","yellow","yellow","orange","orange","yellow","red","black","blue","red","black","orange","black","orange","black","pink","orange","orange","blue")) #_a without HC2
 
 #	pdf('r_FA_3factors_quick.pdf')
 #	plot(load,) # set up plot

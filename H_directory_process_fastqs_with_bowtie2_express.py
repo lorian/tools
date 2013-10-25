@@ -23,6 +23,15 @@ def bowtie2():
 #			proc = subprocess.Popen(['../bowtie2-2.1.0/bowtie2', '-a', '-t', '-p 40', '--rdg 6,5', '--rfg 6,5', '--score-min L,-.6,-.4', '-x ENST74_fused', '-U ' + f, '-S' + basename + '_LGR5.SAM'])
 			proc.wait()
 
+def bowtie2_torque():
+	# run bowtie2 on each fastq
+	for f in file_list:
+		basename = f.rsplit('.',1)[0]
+		if not os.path.isfile(basename + suffix +'.SAM'):
+			print "Running bowtie2 via torque on {0}".format(basename)
+			proc = subprocess.Popen(['qsub', '-v BASENAME="' +basename+ '",SUFFIX="' +suffix+ '"', 'H_torque_directory_process_fastqs_bowtie2.sh'])
+			proc.wait()
+
 def express():
 	# run express on each SAM file, in parallel
 	for f in file_list:
@@ -35,7 +44,7 @@ def express_torque():
 	for f in file_list:
 		basename = f.rsplit('.',1)[0]
 		print "Running express via torque on {0}".format(basename)
-		proc = subprocess.Popen(['qsub', '-v BASENAME="' +basename+ '",SUFFIX="' +suffix+ '"', 'H_torque_directory_process_fastqs.sh'])
+		proc = subprocess.Popen(['qsub', '-v BASENAME="' +basename+ '",SUFFIX="' +suffix+ '"', 'H_torque_directory_process_fastqs_express.sh'])
 
 def prep_sam():
 	# prep each file for alignment viewing, in parallel
@@ -60,5 +69,6 @@ def filestuff():
 
 #bowtie2()
 #express()
+bowtie2_torque()
 express_torque()
 #prep_sam()
