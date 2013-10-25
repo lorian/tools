@@ -31,15 +31,7 @@ for d in dir_list:
 		results_data = [r for r in results]
 		results_data = results_data[1:]
 		results_data.sort(key=lambda x:x[1])
-#		eff_counts = [int(round(float(i if not numpy.isnan(i) else 0.0))) for i in zip(*results_data)[7]] # for making R input table
-		try:
-			eff_counts = [int(round(float(i))) for i in zip(*results_data)[7]] # for making R input table
-		except ValueError:
-			for i in zip(*results_data)[7]:
-				try:
-					int(round(float(i)))
-				except ValueError:
-					print i
+		eff_counts = [int(round(float(i if not np.isnan(float(i)) else 0.0))) for i in zip(*results_data)[7]] # for making R input table
 		fpkm = [float(i) for i in zip(*results_data)[10]] # for making fpkm master table
 
 		# add sample name to BEGINNING of list

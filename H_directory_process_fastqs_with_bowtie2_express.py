@@ -5,10 +5,11 @@ import os
 import subprocess
 import tempfile
 
-suffix = "_quick"
+suffix = "_noa"
 
 # get list of fastqs in directory
-file_list = [f for f in os.listdir('.') if f.endswith('.fastq') and not 'contaminated' in f]
+file_list = [f for f in os.listdir('.') if f.endswith('.fastq') and startswith('IBM_')]
+#file_list = [f for f in os.listdir('.') if f.endswith('.fastq') and not 'contaminated' in f]
 #file_list = [f for f in os.listdir('.') if f.endswith('.SAM')]
 
 def bowtie2():

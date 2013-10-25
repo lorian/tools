@@ -4,7 +4,9 @@ library("DESeq")
 library("RColorBrewer")
 library("gplots")
 library('corpcor')
-#library('nFactors')
+library('nFactors')
+library('psych')
+library('psy')
 #library("ggplot2")
 
 # Get arguments from script
@@ -14,9 +16,11 @@ library('corpcor')
 dataPrep <- function() {
 	# Create source data
 	print("Creating source data")
-	ensemblTable <<- read.table("r_table_allalign_quick.txt",header=TRUE,row.names=1,sep="\t")
-	condition <<-  factor( c( "organoid","differentiated","organoid","hES","organoid",'hES','background','teratoma','control','differentiated','hES','teratoma','control','organoid','teratoma','control','hES','organoid','organoid','control','differentiated','organoid','organoid','organoid','organoid','background','teratoma','control','control','differentiated'))
-#	condition <<-  factor( c( "organoid","differentiated","organoid","hES","organoid",'hES','background','teratoma','control','contaminated','hES','teratoma','control','organoid','teratoma','control','hES','organoid','contaminated','control','differentiated','organoid','organoid','organoid','organoid','background','teratoma','control','control','differentiated'))
+	ensemblTable <<- read.table("r_table_allalign_a_genenames.txt",header=TRUE,row.names=1,sep="\t")
+
+#	condition <<- factor(c("organoid","organoid","differentiated","control","background","organoid","teratoma","hES","organoid","differentiated","hES","organoid","control","differentiated","organoid","teratoma","control","organoid","organoid","teratoma","control","organoid","control","teratoma","organoid","differentiated","background","control","hES","hES")) #_quick
+	condition <<-  factor( c( "organoid","teratoma","background","organoid","hES","hES","teratoma","organoid","organoid","differentiated","control","differentiated","differentiated","organoid","organoid","differentiated","teratoma","control","hES","teratoma","control","organoid","control","organoid","control","background","organoid","organoid","hES")) #_a without HC2
+#	condition <<-  factor( c( "organoid","differentiated","organoid","hES","organoid",'hES','background','teratoma','control','contaminated','hES','teratoma','control','organoid','teratoma','control','hES','organoid','contaminated','control','differentiated','organoid','organoid','organoid','organoid','background','teratoma','control','control','differentiated')) #_genes
 #	condition <<-  factor( c( "organoid-DH8","differentiated-DH5","organoid-DH12","hES-DH6","organoid-DH22",'hES-DH7','background-DH25','teratoma-DH9','control-HC1','differentiated-DH2','hES-DH3','teratoma-DH13','control-HC5','organoid-DH20','teratoma-DH14','control-HC4','hES-DH26','organoid-DH16','organoid-DH1','control-HC6','differentiated-DH23','organoid-DH15','organoid-DH18','organoid-DH10','organoid-DH4','background-DH24','teratoma-DH11','control-HC2','control-HC3','differentiated-DH21'))
 
 	# Prepare data
@@ -119,29 +123,37 @@ heatmapPlot <- function() {
 	print("Heatmap")
 	select = order(rowMeans(counts(ensembl_cds_size)), decreasing=TRUE)[1:5000]
 	hmcol = colorRampPalette(brewer.pal(9, "GnBu"))(100)
-	pdf('r_heatmap_quick.pdf')
+	pdf('r_heatmap_a.pdf')
 	heatmap.2(exprs(ensembl_vsd)[select,], dendrogram = c("column"),col = hmcol, trace="none", labRow = "", margin=c(10, 6))
 	dev.off()
 #	heatmap.2((exprs(ensembl_vsd))[select,], dendrogram = c("column"),col = hmcol, rowVal = "", trace="none", margin=c(10, 6))
 }
 
 heatmapGenes <- function() {
-	# Display heatmap
+	# Display heatmap. TABLE MUST USE GENE NAMES, NOT TRANSCRIPT NAMES
 	print("Heatmap")
 	# Prep gene list by replacing newlines with \\b","\\b
-	geneList = paste(c("\\bAXIN2\\b","\\bDUOX2\\b","\\bKLF5\\b","\\bKRT20\\b","\\bLGR5\\b","\\bMEP1A\\b","\\bMGAM\\b","\\bMUC13\\b","\\bMUC2\\b","\\bOLFM4\\b","\\bSLC15A1\\b","\\bSOX9\\b","\\bTERT\\b","\\bVIL1\\b","\\bVILL\\b","\\bREG4\\b","\\bMUC17\\b","\\bSLC15A1\\b","\\bEPCAM\\b","\\bGUCA2A\\b","\\bCLCA4\\b","\\bTFF2\\b"),collapse="|")
+#	geneList = paste(c("\\bLrig5\\b","\\bLrig1\\b","\\bAscl2\\b","\\bLyz1\\b","\\bSox9\\b","\\bAxin2\\b","\\bCD44\\b"),collapse="|") # Jenson Fig S3b
+#	geneList = paste(c("\\bAxin2\\b","\\bMath1\\b","\\bMuc2\\b","\\bLyz1\\b","\\bPla2g2a\\b","\\bMMP7\\b","\\bWnt3a\\b"),collapse="|") # Figure 3
+#	geneList = paste(c("\\bSox1\\b","\\bSox10\\b","\\bPax6\\b","\\bNestin\\b","\\bSox2\\b"),collapse="|") # Neuronal
+#	geneList = paste(c("\\bTDX1\\b","\\bSox2\\b","\\bCD44\\b","\\bPDX1\\b","\\bCDX1\\b","\\bCDX2\\b","\\bHOXC5\\b","\\bT\\b","\\bMixl1\\b","\\bCXCR4\\b","\\bHHEX\\b","\\bFOXA2\\b","\\bCERB\\b","\\bSOX17\\b","\\bHOXA1\\b","\\bGATA4\\b","\\bHNF4a\\b","\\bEpcam\\b","\\bHOXA2\\b","\\bAFP\\b","\\bALB\\b","\\bA1AT\\b","\\bHNF4ALPHA\\b","\\bCK18\\b","\\bHNF6\\b","\\bHLXB9\\b","\\bNGN3\\b"),collapse="|") # Patterning
+	geneList = paste(c("\\bADAM19\\b","\\bAPOA1\\b","\\bAPOE\\b","\\bBAMBI\\b","\\bBMP2\\b","\\bBMP7\\b","\\bCDKN1C\\b","\\bCER1\\b","\\bCOL5A2\\b","\\bCOL4A5\\b","\\bCOL9A2\\b","\\bCRIP1\\b","\\bCXCR4\\b","\\bDAB2\\b","\\bDKK1\\b","\\bDKK3\\b","\\bEOMES\\b","\\bEPHA2\\b","\\bESRRG\\b","\\bEYA1\\b","\\bFKBP9\\b","\\bFOXA1\\b","\\bFOXA2\\b","\\bFOXC1\\b","\\bFZD4\\b","\\bGAD1\\b","\\bGATA3\\b","\\bGATA4\\b","\\bGATA6\\b","\\bGLIS3\\b","\\bGLUD1\\b","\\bGLUD2\\b","\\bGSC\\b","\\bH2AFY2\\b","\\bHHEX\\b","\\bHSZFP36\\b","\\bID1\\b","\\bID3\\b","\\bIGF2\\b","\\bIGFBP3\\b","\\bKIT\\b","\\bKRT19\\b","\\bKRT8\\b","\\bLEFTY1\\b","\\bLEFTY2\\b","\\bLHX1\\b","\\bMANEA\\b","\\bMANEAL\\b","\\bMIXL1\\b","\\bMSX2\\b","\\bNID2\\b","\\bNODAL\\b","\\bNRP1\\b","\\bOTX2\\b","\\bPDZK1\\b","\\bPERP\\b","\\bPPOX\\b","\\bSOX17\\b","\\bSYTL5\\b","\\bTBC1D9\\b","\\bTNNC1\\b","\\bTYRO3\\b"),collapse="|") # Spence Wells ST1b
+#	geneList = paste(c("\\bAXIN2\\b","\\bDUOX2\\b","\\bKLF5\\b","\\bKRT20\\b","\\bLGR5\\b","\\bMEP1A\\b","\\bMGAM\\b","\\bMUC13\\b","\\bMUC2\\b","\\bOLFM4\\b","\\bSLC15A1\\b","\\bSOX9\\b","\\bTERT\\b","\\bVIL1\\b","\\bVILL\\b","\\bREG4\\b","\\bMUC17\\b","\\bSLC15A1\\b","\\bEPCAM\\b","\\bGUCA2A\\b","\\bCLCA4\\b","\\bTFF2\\b"),collapse="|")
+
 	rows = grep(geneList,featureNames(ensembl_vsd),value=FALSE)
-	cols_cat <- c(19,25,1,22,24,18,3,23,14,5,10,2,30,21) #categorized grouping of org and diff samples
-	cols_pair <- c(19,10,25,2,14,30,5,21) #pairwise grouping of org and diff samples
-	selected_vsd = exprs(ensembl_vsd)[rows,cols_pair]
+	print(rows)
+	cols_cat <- c(19,25,1,22,24,18,3,23,14,5,10,2,30,21) #categorized grouping of org and diff samples ()
+	cols_pair <- c(19,10,25,2,14,30,5,21) #pairwise grouping of org and diff samples ()
+#	selected_vsd = exprs(ensembl_vsd)[rows,cols]
 	hmcol = colorRampPalette(brewer.pal(9, "GnBu"))(100)
 #	norm_vsd = 100*selected_vsd/rowSums(selected_vsd)
 
-	pdf('r_heatmap_onlypairs.pdf',width=10, height=10)
-	heatmap.2(selected_vsd, dendrogram = c("none"),col = hmcol, trace="none", margin=c(15, 6), Colv = F)
+	pdf('r_heatmap_a_spenceST1b.pdf',width=10, height=10)
+	heatmap.2(exprs(ensembl_vsd)[rows,],col = hmcol, trace="none", margin=c(15, 6))
+#	heatmap.2(selected_vsd, dendrogram = c("none"),col = hmcol, trace="none", margin=c(15, 6), Colv = F)
 	dev.off()
-#	dev.new(height=10)
-#	heatmap.2(selected_vsd, dendrogram = c("column"),col = hmcol, trace="none", margin=c(10, 6))
+	dev.new(height=10)
+	heatmap.2(exprs(ensembl_vsd)[rows,],col = hmcol, trace="none", margin=c(15, 6))
 }
 
 similarityPlot <- function() {
@@ -151,16 +163,27 @@ similarityPlot <- function() {
 	mat = as.matrix( dists )
 	hmcol = colorRampPalette(brewer.pal(9, "GnBu"))(100)
 	rownames(mat) = colnames(mat) = with(pData(ensembl_vsd), paste(colnames(ensemblTable), sep=" : "))
-	pdf('r_similarity_quick.pdf')
+	pdf('r_similarity_a.pdf')
 	heatmap.2(mat, trace="none", col = rev(hmcol), margin=c(13, 13))
 	dev.off()
 #	heatmap.2(mat, trace="none", col = rev(hmcol), margin=c(13, 13))
 }
 
+screePlot <- function() {
+	# Determine Number of Factors to Extract
+
+
+	#ev <- eigen(cor(exprs(ensembl_vsd))) # get eigenvalues
+	#ap <- parallel(subject=nrow(exprs(ensembl_vsd)),var=ncol(exprs(ensembl_vsd)),
+	#  rep=100,cent=.05)
+	#nS <- nScree(x=ev$values, aparallel=ap$eigen$qevpea)
+	#plotnScree(nS)
+}
+
 deseqPCA <- function() {
 	# Principle Component Analysis plot
 	print("DESeq PCA")
-	pdf('r_PCA_quick.pdf')
+	pdf('r_PCA_a.pdf')
 	print(plotPCA(ensembl_vsd, intgroup=c('condition'), ntop=120000))
 	dev.off()
 #	print(plotPCA(ensembl_vsd, intgroup=c('condition'), ntop=120000)) # 42859 genes, 120000 transcripts
@@ -168,17 +191,21 @@ deseqPCA <- function() {
 
 rFactorAnalysis <- function() {
 	# R Factor Analysis
-	fit <- factanal(exprs(ensembl_vsd), 5, rotation="varimax")
+	fit <- factanal(exprs(ensembl_vsd), 3, rotation="varimax")
+    scree.plot(fit$correlations)
 	print(fit, digits=2, cutoff=.3, sort=TRUE)
 	# plot factor 1 by factor 2
 	load <- fit$loadings[,1:2]
-	cond_color =  factor( c( "orange","yellow","orange","red","orange",'red','black','pink','blue','yellow','red','pink','blue','orange','pink','blue','red','orange','orange','blue','yellow','orange','orange','orange','orange','black','pink','blue','blue'))
-	pdf('r_FA_3factors_genes.pdf')
-	plot(load,) # set up plot
-	text(load,labels = colnames(exprs(ensembl_vsd)),col=as.character(cond_color),cex=.7) # add variable names
-	dev.off()
-	plot(load,type="n") # set up plot
-	text(load,labels = colnames(exprs(ensembl_vsd)),col=as.character(cond_color),cex=.7) # add variable names
+
+	cond_color = factor(c("orange","orange","yellow","black","pink","orange","red","blue","orange","yellow","blue","orange","black","yellow","orange","red","black","orange","orange","red","black","orange","black","red","orange","yellow","pink","black","blue","blue")) #_quick
+#	cond_color = factor( c( "orange","red","pink","orange","blue","blue","red","orange","orange","yellow","black","yellow","yellow","orange","orange","yellow","red","black","blue","red","black","orange","black","orange","black","pink","orange","orange","blue")) #_a without HC2
+
+#	pdf('r_FA_3factors_quick.pdf')
+#	plot(load,) # set up plot
+#	text(load,labels = colnames(exprs(ensembl_vsd)),col=as.character(cond_color),cex=.7) # add variable names
+#	dev.off()
+#	plot(load,type="n") # set up plot
+#	text(load,labels = colnames(exprs(ensembl_vsd)),col=as.character(cond_color),cex=.7) # add variable names
 }
 
 prcomp.shrink =	function( X ){
@@ -268,10 +295,12 @@ calcProb <- function() {
 #dataPrep()
 
 #binomDist()
-heatmapPlot()
-#heatmapGenes()
-similarityPlot()
-deseqPCA()
+#heatmapPlot()
+heatmapGenes()
+#similarityPlot()
+#deseqPCA()
 #allCombos()
+#screePlot()
 #rPCA()
+#rFactorAnalysis()
 #calcProb()
