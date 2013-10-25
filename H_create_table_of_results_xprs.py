@@ -8,7 +8,7 @@ import os
 count_list = []
 fpkm_list = []
 try:
-	suffix = sys.argv[1] # _quick currently
+	suffix = sys.argv[1] # _noa currently
 except:
 	suffix = ""
 
@@ -19,12 +19,12 @@ else:
 
 
 for d in dir_list:
-	if "results.xprs" in os.listdir(d) and d != "HC2_duodenum_a":
+	if "results.xprs" in os.listdir(d): #and d != "HC2_duodenum_a":
 		if suffix != "":
 			basename = d[:-len(suffix)]
 		else:
 			basename = d
-		print "Processing {0}".format(basename)
+		print "Processing {0}".format(d)
 
 		results_file = open(os.path.join(d, 'results.xprs'), 'r')
 		results = csv.reader(results_file, 'excel-tab')
@@ -65,7 +65,7 @@ for r in fpkm_list:
 	print "Column {0} has {1} rows".format(r[0],len(r))
 
 count_table = np.vstack(count_list)
-np.savetxt('r_table_allalign' +suffix+ '.txt', np.transpose(count_table), delimiter='\t', fmt="%s")
+np.savetxt('r_table' +suffix+ '.txt', np.transpose(count_table), delimiter='\t', fmt="%s")
 
 fpkm_table = np.vstack(fpkm_list)
-np.savetxt('fpkm_table_allalign' +suffix+ '.txt', np.transpose(fpkm_table), delimiter='\t', fmt="%s")
+np.savetxt('fpkm_table' +suffix+ '.txt', np.transpose(fpkm_table), delimiter='\t', fmt="%s")

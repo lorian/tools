@@ -29,7 +29,7 @@ for transcript in id_list:
 		named_dict[transcript] = name
 
 #d = 'fpkm_table_newfused.txt'
-d = 'r_table_allalign_a.txt'
+d = 'r_table_noa.txt'
 basename = d.rsplit('.')[0]
 print "Processing {0}".format(basename)
 
