@@ -69,6 +69,10 @@ def filestuff():
 
 bowtie2()
 #express()
+<<<<<<< HEAD
 #bowtie2_torque()
+=======
+bowtie2_torque()
+>>>>>>> origin/master
 express_torque()
 #prep_sam()
