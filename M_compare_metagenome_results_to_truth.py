@@ -7,12 +7,8 @@ import numpy as np
 np.set_printoptions(precision=4)
 
 filename = sys.argv[1]
-print filename
 dataset_name = sys.argv[2] # which dataset to compare against (simLC_orig, simLC_ab, simLC_new, i100)
-if sys.argv[3]:
-	source = sys.argv[3] # express or gasic
-else:
-	source = 'express'
+source = sys.argv[3] # express, gasic
 
 if dataset_name == 'simLC_orig':
 	dataset = np.array(zip(*[
@@ -494,6 +490,15 @@ elif source == 'gasic':
 	print "Estimated abundances of results: {0}".format(est_abundance)
 
 print "True values: {0}".format(true_abundance)
+
+if len(species) > len(true_abundance): # running against all species, pull out est abundances of only real matches
+	good_abundance = np.zeros((len(true_species)))
+	for ind,sp in enumerate(true_species):
+		good_abundance[ind] = est_abundance[species.index(sp)]
+	print est_abundance
+	est_abundance = good_abundance
+	print est_abundance
+
 if dataset_name == 'simLC_orig' or dataset_name == 'simLC_new': # use est_counts
 	diff = 100*abs(true_abundance - est_counts)/true_abundance
 	print "Error: {0}".format(diff)

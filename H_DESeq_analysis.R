@@ -20,15 +20,10 @@ dataPrep <- function() {
 
 #	condition <<- factor(c("organoid","organoid","differentiated","control","background","organoid","teratoma","hES","organoid","differentiated","hES","organoid","control","differentiated","organoid","teratoma","control","organoid","organoid","teratoma","control","organoid","control","teratoma","organoid","differentiated","background","control","hES","hES")) #_quick
 #	condition <<-  factor( c( "organoid","teratoma","background","organoid","hES","hES","teratoma","organoid","organoid","differentiated","control","differentiated","differentiated","organoid","organoid","differentiated","teratoma","control","hES","teratoma","control","organoid","control","organoid","control","background","organoid","organoid","hES")) #_a without HC2
-<<<<<<< HEAD
-#	condition <<-  factor( c( "organoid","differentiated","organoid","hES","organoid",'hES','background','teratoma','control','differentiated','hES','teratoma','control','organoid','teratoma','control','hES','organoid','organoid','control','differentiated','organoid','organoid','organoid','organoid','background','teratoma','control','control','differentiated')) #_newfused
-	condition <<-  factor( c( "organoid","differentiated","organoid","hES","organoid",'hES','background','teratoma','duodenum','differentiated','hES','teratoma','rectum','organoid','teratoma','ileum','hES','organoid','organoid','rectum','differentiated','organoid','organoid','organoid','organoid','background','teratoma','duodenum','ileum','differentiated')) #_newfused w/specific controls
-=======
-	condition <<-  factor( c( "organoid","differentiated","organoid","hES","organoid",'hES','background','teratoma','control','contaminated','hES','teratoma','control','organoid','teratoma','control','hES','organoid','contaminated','control','differentiated','organoid','organoid','organoid','organoid','background','teratoma','control','control','differentiated')) #_genes
->>>>>>> origin/master
+	condition <<-  factor( c( "organoid","differentiated","organoid","hES","organoid",'hES','background','teratoma','control','differentiated','hES','teratoma','control','organoid','teratoma','control','hES','organoid','organoid','control','differentiated','organoid','organoid','organoid','organoid','background','teratoma','control','control','differentiated')) #_newfused
+#	condition <<-  factor( c( "organoid","differentiated","organoid","hES","organoid",'hES','background','teratoma','duodenum','differentiated','hES','teratoma','rectum','organoid','teratoma','ileum','hES','organoid','organoid','rectum','differentiated','organoid','organoid','organoid','organoid','background','teratoma','duodenum','ileum','differentiated')) #_newfused w/specific controls
 #	condition <<-  factor( c( "organoid-DH8","differentiated-DH5","organoid-DH12","hES-DH6","organoid-DH22",'hES-DH7','background-DH25','teratoma-DH9','control-HC1','differentiated-DH2','hES-DH3','teratoma-DH13','control-HC5','organoid-DH20','teratoma-DH14','control-HC4','hES-DH26','organoid-DH16','organoid-DH1','control-HC6','differentiated-DH23','organoid-DH15','organoid-DH18','organoid-DH10','organoid-DH4','background-DH24','teratoma-DH11','control-HC2','control-HC3','differentiated-DH21'))
 #	condition <<-  factor( c( "background","organoid","organoid","organoid","teratoma","organoid","control","teratoma","differentiated","control","hES","hES","teratoma","organoid","organoid","liver","organoid","organoid","organoid","teratoma","differentiated","background","hES","organoid","differentiated","control","breast","control","differentiated","hES","control","colon","control")) #full _noa w/IBM
-
 
 	# Prepare data
 	print("Preparing data")
@@ -64,12 +59,12 @@ examineFilter <- function() {
 outputTables <- function() {
 	# Export size factors
 	print("Writing sizes to file")
-	write.table(sizeFactors(ensembl_cds_disp), file = "r_ensembl_size.txt", row.names=TRUE, col.names=TRUE, sep = "\t")
+	write.table(sizeFactors(ensembl_cds_disp), file = "r_noa_ensembl_size.txt", row.names=TRUE, col.names=TRUE, sep = "\t")
 	print("Done writing table")
 
 	# Export expression results of processing
 	print("Writing vsd expressions to file")
-	write.table(exprs(ensembl_vsd), file = "r_ensembl_vsd_no21.txt", row.names=TRUE, col.names=TRUE, sep = "\t")
+	write.table(exprs(ensembl_vsd), file = "r_noa_ensembl_vsd.txt", row.names=TRUE, col.names=TRUE, sep = "\t")
 	print("Done writing table")
 }
 
@@ -138,49 +133,26 @@ heatmapPlot <- function() {
 	heatmap.2(exprs(ensembl_vsd)[select,], dendrogram = c("column"),col = hmcol, trace="none", labRow = "", margin=c(10, 6))
 }
 
-heatmapGenes <- function(listname, genelist) {
+heatmapGenes <- function(listname, rawgenelist) {
 	# Display heatmap. TABLE MUST USE GENE NAMES, NOT TRANSCRIPT NAMES
 	print("Heatmap")
 	# Prep gene list by replacing newlines with \\b","\\b
-<<<<<<< HEAD
-	geneList = paste(c(genelist),collapse="|")
-#	geneList = paste(c("\\bCLDN6\\b","\\bEOMES\\b","\\bFABP1\\b","\\bFABP2\\b","\\bFOXA1\\b","\\bFOXA2\\b","\\bGATA4\\b","\\bGSC\\b","\\bHNF1B\\b","\\bKRT19\\b","\\bSOX17\\b","\\bSOX7\\b","\\bKIT\\b","\\bCXCR4\\b"),collapse="|") #definitive endoderm2
-#	geneList = paste(c("\\bAFP\\b","\\bCTNNB1\\b","\\bGATA4\\b","\\bGATA6\\b","\\bGDF1\\b","\\bGDF3\\b","\\bHNF4A\\b","\\bMIXL1\\b","\\bSALL4\\b","\\bSOX17\\b","\\bSOX7\\b"),collapse="|") #primative endoderm2
-#	geneList = paste(c("\\bCD34 \\b","\\bPROM1\\b","\\bSOX9\\b","\\bLYZ\\b","\\bMMP7\\b","\\bMUC2\\b","\\bPLA2G2A\\b","\\bLGR5\\b"),collapse="|") #adult2
-#	geneList = paste(c("\\bCDX1\\b","\\bCDX2\\b","\\bPDX1\\b","\\bHHEX\\b","\\bSOX2\\b","\\bBARX1\\b","\\bSFRP1\\b","\\bCD34\\b","\\bCDX4\\b","\\bHOXC5\\b","\\bFABP2\\b","\\bGATA4\\b","\\bNKX2-1\\b","\\bDKK1\\b"),collapse="|") #patterning2
-#	geneList = paste(c("\\bFKBP9\\b","\\bGLUD1\\b","\\bKRT19\\b","\\bKRT8\\b","\\bIGFBP3\\b","\\bFKBP9\\b","\\bPERP\\b","\\bCDX1\\b","\\bCDX2\\b","\\bPDX1\\b","\\bGATA4\\b","\\bSOX17\\b","\\bHHEX\\b","\\bSOX2\\b","\\bNES\\b","\\bNEUROG3\\b","\\bPAX6\\b","\\bSOX1\\b","\\bSOX10\\b","\\bLEFTY1\\b","\\bESRRG\\b","\\bBMP1\\b","\\bCXCR4\\b","\\bDKK1\\b","\\bFOXC1\\b","\\bGATA3\\b","\\bKIT\\b","\\bLYZ\\b","\\bATOH1\\b","\\bMIXL1\\b","\\bMMP7\\b","\\bMUC2\\b","\\bPLA2G2A\\b","\\bSOX9\\b","\\bT\\b","\\bWNT3A\\b","\\bHNF4A\\b","\\bONECUT1\\b","\\bONECUT2\\b","\\bHOXA1\\b","\\bHOXA2\\b","\\bHOXC5\\b","\\bLRIG1\\b","\\bCER1\\b","\\bGREM2\\b","\\bCXCR4\\b","\\bEPCAM\\b","\\bFOXA2\\b","\\bSERPINA1\\b","\\bAFP\\b","\\bALB\\b","\\bASCL2\\b","\\bATOH1\\b","\\bAXIN2\\b","\\bCD44\\b"),collapse="|") #list of all
-=======
-	geneList = paste(c("\\bFKBP9\\b","\\bGLUD1\\b","\\bKRT19\\b","\\bKRT8\\b","\\bIGFBP3\\b","\\bFKBP9\\b","\\bPERP\\b","\\bCDX1\\b","\\bCDX2\\b","\\bPDX1\\b","\\bGATA4\\b","\\bSOX17\\b","\\bHHEX\\b","\\bSOX2\\b","\\bNES\\b","\\bNEUROG3\\b","\\bPAX6\\b","\\bSOX1\\b","\\bSOX10\\b","\\bLEFTY1\\b","\\bESRRG\\b","\\bBMP1\\b","\\bCXCR4\\b","\\bDKK1\\b","\\bFOXC1\\b","\\bGATA3\\b","\\bKIT\\b","\\bLYZ\\b","\\bATOH1\\b","\\bMIXL1\\b","\\bMMP7\\b","\\bMUC2\\b","\\bPLA2G2A\\b","\\bSOX9\\b","\\bT\\b","\\bWNT3A\\b","\\bHNF4A\\b","\\bONECUT1\\b","\\bONECUT2\\b","\\bHOXA1\\b","\\bHOXA2\\b","\\bHOXC5\\b","\\bLRIG1\\b","\\bCER1\\b","\\bGREM2\\b","\\bCXCR4\\b","\\bEPCAM\\b","\\bFOXA2\\b","\\bSERPINA1\\b","\\bAFP\\b","\\bALB\\b","\\bASCL2\\b","\\bATOH1\\b","\\bAXIN2\\b","\\bCD44\\b"),collapse="|") #list of all
->>>>>>> origin/master
-#	geneList = paste(c("\\bFKBP9\\b","\\bGLUD1\\b","\\bKRT19\\b","\\bKRT8\\b","\\bIGFBP3\\b","\\bFKBP9\\b","\\bPERP\\b"),collapse="|") #shortlist dark
-#	geneList = paste(c("\\bCDX1\\b","\\bCDX2\\b","\\bPDX1\\b","\\bGATA4\\b","\\bSOX17\\b","\\bHHEX\\b","\\bSOX2\\b"),collapse="|") #shortlist pattern
-#	geneList = paste(c("\\bNES\\b","\\bNEUROG3\\b","\\bPAX6\\b","\\bSOX1\\b","\\bSOX10\\b"),collapse="|") #shortlist neuronal
-#	geneList = paste(c("\\bLEFTY1\\b","\\bESRRG\\b","\\bBMP1\\b","\\bCXCR4\\b","\\bDKK1\\b","\\bFOXC1\\b","\\bGATA3\\b","\\bKIT\\b"),collapse="|") #shortlist other
-#	geneList = paste(c("\\bLYZ\\b","\\bATOH1\\b","\\bMIXL1\\b","\\bMMP7\\b","\\bMUC2\\b","\\bPLA2G2A\\b","\\bSOX9\\b","\\bT\\b","\\bWNT3A\\b"),collapse="|") #shortlist4
-#	geneList = paste(c("\\bHNF4A\\b","\\bONECUT1\\b","\\bONECUT2\\b","\\bHOXA1\\b","\\bHOXA2\\b","\\bHOXC5\\b","\\bLRIG1\\b"),collapse="|") #shortlist3
-#	geneList = paste(c("\\bCER1\\b","\\bGREM2\\b","\\bCXCR4\\b","\\bEPCAM\\b","\\bFOXA2\\b"),collapse="|") #shortlist2
-#	geneList = paste(c("\\bSERPINA1\\b","\\bAFP\\b","\\bALB\\b","\\bASCL2\\b","\\bATOH1\\b","\\bAXIN2\\b","\\bCD44\\b"),collapse="|") #shortlist1
-#	geneList = paste(c("\\bTDX1\\b","\\bSox2\\b","\\bCD44\\b","\\bPDX1\\b","\\bCDX1\\b","\\bCDX2\\b","\\bHOXC5\\b","\\bT\\b","\\bMixl1\\b","\\bCXCR4\\b","\\bHHEX\\b","\\bFOXA2\\b","\\bCERB\\b","\\bSOX17\\b","\\bHOXA1\\b","\\bGATA4\\b","\\bHNF4a\\b","\\bEpcam\\b","\\bHOXA2\\b","\\bAFP\\b","\\bALB\\b","\\bA1AT\\b","\\bHNF4ALPHA\\b","\\bCK18\\b","\\bHNF6\\b","\\bHLXB9\\b","\\bNGN3\\b"),collapse="|") # Patterning
-#	geneList = paste(c("\\bADAM19\\b","\\bAPOA1\\b","\\bAPOE\\b","\\bBAMBI\\b","\\bBMP2\\b","\\bBMP7\\b","\\bCDKN1C\\b","\\bCER1\\b","\\bCOL5A2\\b","\\bCOL4A5\\b","\\bCOL9A2\\b","\\bCRIP1\\b","\\bCXCR4\\b","\\bDAB2\\b","\\bDKK1\\b","\\bDKK3\\b","\\bEOMES\\b","\\bEPHA2\\b","\\bESRRG\\b","\\bEYA1\\b","\\bFKBP9\\b","\\bFOXA1\\b","\\bFOXA2\\b","\\bFOXC1\\b","\\bFZD4\\b","\\bGAD1\\b","\\bGATA3\\b","\\bGATA4\\b","\\bGATA6\\b","\\bGLIS3\\b","\\bGLUD1\\b","\\bGLUD2\\b","\\bGSC\\b","\\bH2AFY2\\b","\\bHHEX\\b","\\bHSZFP36\\b","\\bID1\\b","\\bID3\\b","\\bIGF2\\b","\\bIGFBP3\\b","\\bKIT\\b","\\bKRT19\\b","\\bKRT8\\b","\\bLEFTY1\\b","\\bLEFTY2\\b","\\bLHX1\\b","\\bMANEA\\b","\\bMANEAL\\b","\\bMIXL1\\b","\\bMSX2\\b","\\bNID2\\b","\\bNODAL\\b","\\bNRP1\\b","\\bOTX2\\b","\\bPDZK1\\b","\\bPERP\\b","\\bPPOX\\b","\\bSOX17\\b","\\bSYTL5\\b","\\bTBC1D9\\b","\\bTNNC1\\b","\\bTYRO3\\b"),collapse="|") # Spence Wells ST1b
-#	geneList = paste(c("\\bAXIN2\\b","\\bDUOX2\\b","\\bKLF5\\b","\\bKRT20\\b","\\bLGR5\\b","\\bMEP1A\\b","\\bMGAM\\b","\\bMUC13\\b","\\bMUC2\\b","\\bOLFM4\\b","\\bSLC15A1\\b","\\bSOX9\\b","\\bTERT\\b","\\bVIL1\\b","\\bVILL\\b","\\bREG4\\b","\\bMUC17\\b","\\bSLC15A1\\b","\\bEPCAM\\b","\\bGUCA2A\\b","\\bCLCA4\\b","\\bTFF2\\b"),collapse="|")
-
+	geneList = paste(rawgenelist,collapse="|")
 	rows = grep(geneList,featureNames(ensembl_vsd),value=FALSE)
-	cols_cat <- c(19,25,1,22,24,18,3,23,14,5,10,2,30,21) #categorized grouping of org and diff samples ()
-	cols_pair <- c(19,10,25,2,14,30,5,21) #pairwise grouping of org and diff samples ()
+	cols_nodiff = c(1,3,4,5,6,7,8,9,11,12,13,14,15,16,17,18,19,20,22,23,24,25,26,27,28,29)
+	cols_orgdiff = c(1,2,3,5,10,14,18,19,21,22,23,24,25,30)
+	cols_paired = c(19,10,25,2,14,30,5,21)
 #	selected_vsd = exprs(ensembl_vsd)[rows,cols]
 	hmcol = colorRampPalette(brewer.pal(9, "GnBu"))(100)
 #	norm_vsd = 100*selected_vsd/rowSums(selected_vsd)
 
-<<<<<<< HEAD
-	pdf('r_heatmap_noa_definitiveendoderm2.pdf',width=10, height=10)
-=======
-	pdf('r_heatmap_noa_alllist.pdf',width=10, height=10)
->>>>>>> origin/master
-	heatmap.2(exprs(ensembl_vsd)[rows,],col = hmcol, trace="none", margin=c(15, 6))
-#	heatmap.2(selected_vsd, dendrogram = c("none"),col = hmcol, trace="none", margin=c(15, 6), Colv = F)
+	pdf(paste('r_heatmap_noa_',listname,'.pdf'),width=10, height=10)
+	heatmap.2(exprs(ensembl_vsd)[rows,],col = hmcol, trace="none", margin=c(15, 6),dendrogram = c("both"),)
 	dev.off()
 	dev.new(height=10)
-	heatmap.2(exprs(ensembl_vsd)[rows,],col = hmcol, trace="none", margin=c(15, 6))
+	heatmap.2(exprs(ensembl_vsd)[rows,],col = hmcol, trace="none", margin=c(15, 6),dendrogram = c("both"),)
+#	heatmap.2(exprs(ensembl_vsd)[rows,cols_paired],col = hmcol, trace="none", margin=c(15, 6),dendrogram = c("row"), Colv=FALSE) # no column reordering
+
 }
 
 similarityPlot <- function() {
@@ -210,17 +182,11 @@ screePlot <- function() {
 deseqPCA <- function() {
 	# Principle Component Analysis plot
 	print("DESeq PCA")
-<<<<<<< HEAD
+
 	pdf('r_PCA_noa_withcontrols.pdf')
 	print(plotPCA(ensembl_vsd, intgroup=c('condition'), ntop=42859))
 	dev.off()
 	print(plotPCA(ensembl_vsd, intgroup=c('condition'), ntop=42859)) # 42859 genes, 120000 transcripts
-=======
-#	pdf('r_PCA_genenames.pdf')
-	print(plotPCA(ensembl_vsd, intgroup=c('condition'), ntop=42859))
-#	dev.off()
-#	print(plotPCA(ensembl_vsd, intgroup=c('condition'), ntop=120000)) # 42859 genes, 120000 transcripts
->>>>>>> origin/master
 }
 
 rFactorAnalysis <- function() {
@@ -326,6 +292,45 @@ calcProb <- function() {
 	print(format(prob_smaller, scientific = TRUE, digits = 10))
 }
 
+getVariances <- function() {
+	# Get variances per condition
+	organoid_cols = which( condition == 'organoid' )
+	differentiated_cols = which( condition == 'differentiated' )
+	control_cols = which( condition == 'control' )
+	hES_cols = which( condition == 'hES' )
+	background_cols = which( condition == 'background' )
+	teratoma_cols = which( condition == 'teratoma' )
+
+	# Check data is correct
+	print(head(counts( ensembl_cds_size, normalized=TRUE )["OPA3",organoid_cols]))
+	print(head(genefilter::rowVars( counts( ensembl_cds_size, normalized=TRUE )["OPA3",organoid_cols])))
+	print(head(rowMeans(counts(ensembl_cds_size, normalized=TRUE)["OPA3",organoid_cols])))
+
+	print("Wrinting variances to file")
+	organoid_var = genefilter::rowVars( counts( ensembl_cds_size, normalized=TRUE )[,organoid_cols])
+	differentiated_var = genefilter::rowVars( counts( ensembl_cds_size, normalized=TRUE )[,differentiated_cols])
+	control_var = genefilter::rowVars( counts( ensembl_cds_size, normalized=TRUE )[,control_cols])
+	hES_var = genefilter::rowVars( counts( ensembl_cds_size, normalized=TRUE )[,hES_cols])
+	background_var = genefilter::rowVars( counts( ensembl_cds_size, normalized=TRUE )[,background_cols])
+	teratoma_var = genefilter::rowVars( counts( ensembl_cds_size, normalized=TRUE )[,teratoma_cols])
+
+	var_table <- t(rbind(organoid_var,differentiated_var,control_var,hES_var,background_var,teratoma_var))
+	write.table(var_table, file = "variances.txt", row.names=TRUE, col.names=TRUE, sep = "\t")
+	print("Done writing variances")
+
+	print("Writing means to file")
+	organoid_m = rowMeans(counts(ensembl_cds_size, normalized=TRUE)[,organoid_cols])
+	differentiated_m = rowMeans(counts(ensembl_cds_size, normalized=TRUE)[,differentiated_cols])
+	control_m = rowMeans(counts(ensembl_cds_size, normalized=TRUE)[,control_cols])
+	hES_m = rowMeans(counts(ensembl_cds_size, normalized=TRUE)[,hES_cols])
+	background_m = rowMeans(counts(ensembl_cds_size, normalized=TRUE)[,background_cols])
+	teratoma_m = rowMeans(counts(ensembl_cds_size, normalized=TRUE)[,teratoma_cols])
+
+	var_table <- t(rbind(organoid_m,differentiated_m,control_m,hES_m,background_m,teratoma_m))
+	write.table(var_table, file = "means.txt", row.names=TRUE, col.names=TRUE, sep = "\t")
+	print("Done writing means")
+}
+
 #dataPrep()
 
 #binomDist()
@@ -337,9 +342,20 @@ calcProb <- function() {
 #rPCA()
 #rFactorAnalysis()
 #calcProb()
+#outputTables()
+#getVariances()
 
-heatmapGenes('aquaporins',["AQP1","AQP2","AQP3","AQP4","AQP5","AQP6","AQP7","AQP8","AQP9","AQP10","AQP11"])
-heatmapGenes('maturity',['AXIN2','CDH1','CDH17','CDX2','DEFA5','DEF6','DUOX2','ELF3','EPCAM','KLF4','KLF5','LGR5','LYZ','MUC13','MUC2','SOX9','VIL1','SI','MMP7','PLA2G2A','WNT3A','ATOH1','TFF3','TERT'])
-heatmapGenes('adultstem',['LGR5','SOX9','KLF4','KLF5','OLFM4','TERT'])
-heatmapGenes('pattern',['BARX1','SFRP1','HHEX','SOX2','DKK1','FABP2','CDX1','CDX2','HOXC5'])
-
+#heatmapGenes("aquaporins",c("\\bAQP1\\b","\\bAQP2\\b","\\bAQP3\\b","\\bAQP4\\b","\\bAQP5\\b","\\bAQP6\\b","\\bAQP7\\b","\\bAQP8\\b","\\bAQP9\\b","\\bAQP10\\b","\\bAQP11\\b"))
+#heatmapGenes("maturity",c("\\bAXIN2\\b","\\bCDH1\\b","\\bCDH17\\b","\\bCDX2\\b","\\bDEFA5\\b","\\bDEF6\\b","\\bDUOX2\\b","\\bELF3\\b","\\bEPCAM\\b","\\bKLF4\\b","\\bKLF5\\b","\\bLGR5\\b","\\bLYZ\\b","\\bMUC13\\b","\\bMUC2\\b","\\bSOX9\\b","\\bVIL1\\b","\\bSI\\b","\\bMMP7\\b","\\bPLA2G2A\\b","\\bWNT3A\\b","\\bATOH1\\b","\\bTFF3\\b","\\bTERT\\b"))
+#heatmapGenes("adultstem",c("\\bLGR5\\b","\\bSOX9\\b","\\bKLF4\\b","\\bKLF5\\b","\\bOLFM4\\b","\\bTERT\\b"))
+#heatmapGenes("pattern",c("\\bBARX1\\b","\\bSFRP1\\b","\\bHHEX\\b","\\bSOX2\\b","\\bDKK1\\b","\\bFABP2\\b","\\bCDX1\\b","\\bCDX2\\b","\\bHOXC5\\b"))
+#heatmapGenes('differentiated',c("\\bANPEP\\b","\\bASCL2\\b","\\bCA1\\b","\\bLGR5\\b","\\bMKI67\\b","\\bMUC2\\b","\\bTFF3\\b","\\bAXIN2\\b","\\bCLCA4\\b","\\bDUOX2\\b","\\bEPCAM\\b","\\bGUCA2A\\b","\\bKLF5\\b","\\bLGR5\\b","\\bMEP1A\\b","\\bMGAM\\b","\\bMGAM\\b","\\bMUC13\\b","\\bMUC17\\b","\\bMUC2\\b","\\bOLFM4\\b","\\bREG4\\b","\\bSLC15A1\\b","\\bSOX9\\b","\\bTERT\\b","\\bTFF2\\b","\\bVIL1\\b","\\bVILL\\b"))
+#heatmapGenes('secretory_new',c("\\bAXIN2\\b","\\bCDH1\\b","\\bCDH17\\b","\\bCDX2\\b","\\bDEF6\\b","\\bDUOX2\\b","\\bELF3\\b","\\bEPCAM\\b","\\bKLF4\\b","\\bKLF5\\b","\\bLGR5\\b","\\bLYZ\\b","\\bMUC13\\b","\\bMUC2\\b","\\bSOX9\\b","\\bVIL1\\b","\\bSI\\b","\\bMMP7\\b","\\bPLA2G2A\\b","\\bWNT3A\\b","\\bTFF3 \\b","\\bTERT\\b","\\bCA2\\b","\\bSCNN1A\\b","\\bSLC5A1\\b"))
+#heatmapGenes('adultstem_new',c("\\bLGR5\\b","\\bSOX9\\b","\\bKLF4\\b","\\bKLF5\\b","\\bOLFM4\\b","\\bTERT\\b"))
+#heatmapGenes('orgonly1',c("\\bAXIN2\\b","\\bCLCA4\\b","\\bDUOX2\\b","\\bEPCAM\\b","\\bGUCA2A\\b","\\bKLF5\\b","\\bKRT20\\b","\\bKRT20\\b","\\bLGR5\\b","\\bMEP1A\\b","\\bMGAM\\b","\\bMGAM\\b","\\bMUC13\\b","\\bMUC17\\b","\\bMUC2\\b","\\bOLFM4\\b","\\bREG4\\b","\\bSLC15A1\\b","\\bSOX9\\b","\\bTERT\\b","\\bTFF2\\b","\\bVIL1\\b","\\bCA2\\b","\\bSCNN1A\\b"))
+#heatmapGenes('orgonly2',c("\\bANPEP\\b","\\bASCL2\\b","\\bCA1\\b","\\bLGR5\\b","\\bMKI67\\b","\\bMUC2\\b","\\bTFF3\\b","\\bAXIN2\\b","\\bCLCA4\\b","\\bDUOX2\\b","\\bEPCAM\\b","\\bGUCA2A\\b","\\bKLF5\\b","\\bLGR5\\b","\\bMEP1A\\b","\\bMGAM\\b","\\bMGAM\\b","\\bMUC13\\b","\\bMUC17\\b","\\bMUC2\\b","\\bOLFM4\\b","\\bREG4\\b","\\bSLC15A1\\b","\\bSOX9\\b","\\bTERT\\b","\\bTFF2\\b","\\bVIL1\\b","\\bVILL\\b"))
+#heatmapGenes('orgonlyfinal',c("\\bAXIN2\\b","\\bCA2\\b","\\bCLCA4\\b","\\bDUOX2\\b","\\bEPCAM\\b","\\bGUCA2A\\b","\\bKLF5\\b","\\bKRT20\\b","\\bKRT20\\b","\\bLGR5\\b","\\bMEP1A\\b","\\bMGAM\\b","\\bMGAM\\b","\\bMUC13\\b","\\bMUC17\\b","\\bMUC2\\b","\\bOLFM4\\b","\\bREG4\\b","\\bSCNN1A\\b","\\bSLC15A1\\b","\\bSOX9\\b","\\bTERT\\b","\\bTFF2\\b","\\bVIL1\\b","\\bANPEP\\b","\\bASCL2\\b","\\bMKI67\\b","\\bTFF3\\b","\\bVILL\\b"))
+#heatmapGenes('column1',c("\\bAXIN2\\b","\\bCA2\\b","\\bCDH1\\b","\\bCDH17\\b","\\bCDX2\\b","\\bDEF6\\b","\\bDUOX2\\b","\\bELF3\\b","\\bEPCAM\\b","\\bKLF4\\b","\\bKLF5\\b","\\bKRT20\\b","\\bLGR5\\b","\\bLYZ\\b","\\bMMP7\\b","\\bMUC13\\b","\\bMUC2\\b","\\bPLA2G2A\\b","\\bSCNN1A\\b","\\bSI\\b","\\bSLC5A1\\b","\\bSOX9\\b","\\bTERT\\b","\\bTFF3 \\b","\\bVIL1\\b","\\bWNT3A\\b"))
+#heatmapGenes('column2',c("\\bAXIN2\\b","\\bCA2\\b","\\bCDH1\\b","\\bCDH17\\b","\\bCDX2\\b","\\bCFTR\\b","\\bDEF6\\b","\\bDUOX2\\b","\\bELF3\\b","\\bEPCAM\\b","\\bKLF4\\b","\\bKLF5\\b","\\bKRT20\\b","\\bLGR5\\b","\\bLYZ\\b","\\bMMP7\\b","\\bMUC13\\b","\\bMUC2\\b","\\bPLA2G2A\\b","\\bSCNN1A\\b","\\bSI\\b","\\bSLC5A1\\b","\\bSOX9\\b","\\bTERT\\b","\\bTFF3 \\b","\\bVIL1\\b","\\bWNT3A\\b"))
+#heatmapGenes('column3',c("\\bAXIN2\\b","\\bCA2\\b","\\bCDH1\\b","\\bCDH17\\b","\\bCDX2\\b","\\bCFTR\\b","\\bDEF6\\b","\\bDUOX2\\b","\\bELF3\\b","\\bEPCAM\\b","\\bKLF4\\b","\\bKLF5\\b","\\bKRT20\\b","\\bLGR5\\b","\\bLYZ\\b","\\bMMP7\\b","\\bMUC13\\b","\\bMUC2\\b","\\bOLFM4\\b","\\bPLA2G2A\\b","\\bSCNN1A\\b","\\bSI\\b","\\bSLC5A1\\b","\\bSOX9\\b","\\bTERT\\b","\\bTFF3 \\b","\\bVIL1\\b","\\bWNT3A\\b"))
+heatmapGenes('column4',c("\\bAXIN2\\b","\\bCA2\\b","\\bCDH1\\b","\\bCDH17\\b","\\bCDX2\\b","\\bDEF6\\b","\\bDUOX2\\b","\\bELF3\\b","\\bEPCAM\\b","\\bKLF4\\b","\\bKLF5\\b","\\bKRT20\\b","\\bLGR5\\b","\\bLYZ\\b","\\bMMP7\\b","\\bMUC13\\b","\\bMUC2\\b","\\bOLFM4\\b","\\bPDX1\\b","\\bPLA2G2A\\b","\\bSCNN1A\\b","\\bSI\\b","\\bSOX9\\b","\\bTERT\\b","\\bTFF3 \\b","\\bVIL1\\b","\\bWNT3A\\b"))
