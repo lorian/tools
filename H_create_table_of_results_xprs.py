@@ -13,7 +13,7 @@ except:
 	suffix = ""
 
 if suffix != "":
-	dir_list = [x for x in os.walk('.').next()[1] if x.endswith(suffix)]
+	dir_list = [x for x in os.walk('.').next()[1] if x.endswith(suffix) and not x.startswith('IBM')]
 else:
 	dir_list = [x for x in os.walk('.').next()[1]]
 

@@ -6,6 +6,8 @@ import numpy as np
 import os
 from operator import itemgetter, attrgetter
 
+d = 'r_table_noa_newdata.txt'
+
 with open('ensembl_gene_ids.txt','r') as id_file:
 	ids = csv.reader(id_file, 'excel-tab')
 	id_data = [r for r in ids]
@@ -28,8 +30,6 @@ for transcript in id_list:
 	else:
 		named_dict[transcript] = name
 
-#d = 'fpkm_table_newfused.txt'
-d = 'r_table_noa.txt'
 basename = d.rsplit('.')[0]
 print "Processing {0}".format(basename)
 

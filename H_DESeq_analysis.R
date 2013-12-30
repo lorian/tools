@@ -16,14 +16,16 @@ library('psy')
 dataPrep <- function() {
 	# Create source data
 	print("Creating source data")
-	ensemblTable <<- read.table("r_table_newfused_genenames.txt",header=TRUE,row.names=1,sep="\t")
+	ensemblTable <<- read.table("r_table_noa_newdata_genenames.txt",header=TRUE,row.names=1,sep="\t")
 
+#	condition <<- factor (c("background","organoid","organoid","organoid","teratoma","organoid","control","teratoma","differentiated","control","hES","hES","teratoma","organoid","organoid","organoid","mixed","organoid","organoid","teratoma","differentiated","background","hES","differentiated","organoid","differentiated","control","control","differentiated","hES","differentiated","control","mixed","organoid","organoid","control")) #_noa_newdata_genenames
+	condition <<- factor (c("background","organoid","organoid","organoid","teratoma","organoid","rectum","teratoma","differentiated","duodenum","hES","hES","teratoma","organoid","organoid","organoid","mixed","organoid","organoid","teratoma","differentiated","background","hES","differentiated","organoid","differentiated","ileum","ileum","differentiated","hES","differentiated","rectum","mixed","organoid","organoid","duodenum")) #_noa_newdata_genenames w/specific controls
+#	condition <<- factor( c( "background","organoid","organoid","organoid","teratoma","organoid","control","teratoma","differentiated","control","hES","hES","teratoma","organoid","organoid","liver","organoid","organoid","organoid","teratoma","differentiated","background","hES","organoid","differentiated","control","breast","control","differentiated","hES","control","colon","control")) #full _noa w/IBM
 #	condition <<- factor(c("organoid","organoid","differentiated","control","background","organoid","teratoma","hES","organoid","differentiated","hES","organoid","control","differentiated","organoid","teratoma","control","organoid","organoid","teratoma","control","organoid","control","teratoma","organoid","differentiated","background","control","hES","hES")) #_quick
-#	condition <<-  factor( c( "organoid","teratoma","background","organoid","hES","hES","teratoma","organoid","organoid","differentiated","control","differentiated","differentiated","organoid","organoid","differentiated","teratoma","control","hES","teratoma","control","organoid","control","organoid","control","background","organoid","organoid","hES")) #_a without HC2
-	condition <<-  factor( c( "organoid","differentiated","organoid","hES","organoid",'hES','background','teratoma','control','differentiated','hES','teratoma','control','organoid','teratoma','control','hES','organoid','organoid','control','differentiated','organoid','organoid','organoid','organoid','background','teratoma','control','control','differentiated')) #_newfused
-#	condition <<-  factor( c( "organoid","differentiated","organoid","hES","organoid",'hES','background','teratoma','duodenum','differentiated','hES','teratoma','rectum','organoid','teratoma','ileum','hES','organoid','organoid','rectum','differentiated','organoid','organoid','organoid','organoid','background','teratoma','duodenum','ileum','differentiated')) #_newfused w/specific controls
-#	condition <<-  factor( c( "organoid-DH8","differentiated-DH5","organoid-DH12","hES-DH6","organoid-DH22",'hES-DH7','background-DH25','teratoma-DH9','control-HC1','differentiated-DH2','hES-DH3','teratoma-DH13','control-HC5','organoid-DH20','teratoma-DH14','control-HC4','hES-DH26','organoid-DH16','organoid-DH1','control-HC6','differentiated-DH23','organoid-DH15','organoid-DH18','organoid-DH10','organoid-DH4','background-DH24','teratoma-DH11','control-HC2','control-HC3','differentiated-DH21'))
-#	condition <<-  factor( c( "background","organoid","organoid","organoid","teratoma","organoid","control","teratoma","differentiated","control","hES","hES","teratoma","organoid","organoid","liver","organoid","organoid","organoid","teratoma","differentiated","background","hES","organoid","differentiated","control","breast","control","differentiated","hES","control","colon","control")) #full _noa w/IBM
+#	condition <<- factor( c( "organoid","teratoma","background","organoid","hES","hES","teratoma","organoid","organoid","differentiated","control","differentiated","differentiated","organoid","organoid","differentiated","teratoma","control","hES","teratoma","control","organoid","control","organoid","control","background","organoid","organoid","hES")) #_a without HC2
+#	condition <<- factor( c( "organoid","differentiated","organoid","hES","organoid",'hES','background','teratoma','control','differentiated','hES','teratoma','control','organoid','teratoma','control','hES','organoid','organoid','control','differentiated','organoid','organoid','organoid','organoid','background','teratoma','control','control','differentiated')) #_newfused
+#	condition <<- factor( c( "organoid","differentiated","organoid","hES","organoid",'hES','background','teratoma','duodenum','differentiated','hES','teratoma','rectum','organoid','teratoma','ileum','hES','organoid','organoid','rectum','differentiated','organoid','organoid','organoid','organoid','background','teratoma','duodenum','ileum','differentiated')) #_newfused w/specific controls
+#	condition <<- factor( c( "organoid-DH8","differentiated-DH5","organoid-DH12","hES-DH6","organoid-DH22",'hES-DH7','background-DH25','teratoma-DH9','control-HC1','differentiated-DH2','hES-DH3','teratoma-DH13','control-HC5','organoid-DH20','teratoma-DH14','control-HC4','hES-DH26','organoid-DH16','organoid-DH1','control-HC6','differentiated-DH23','organoid-DH15','organoid-DH18','organoid-DH10','organoid-DH4','background-DH24','teratoma-DH11','control-HC2','control-HC3','differentiated-DH21'))
 
 	# Prepare data
 	print("Preparing data")
@@ -72,11 +74,11 @@ binomDist <- function() {
 	# Graph binomial distribution
 	print("Binomial distributions")
 	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "organoid","ileum" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="organoid_ileum_all_genes.csv" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_organoid_ileum_genes.csv" )
 	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "organoid","rectum" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="organoid_rectum_all_genes.csv" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_organoid_rectum_genes.csv" )
 	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "organoid","duodenum" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="organoid_duodenum_all_genes.csv" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_organoid_duodenum_genes.csv" )
 
 #	hist(ensembl_cds_binom$pval, breaks=100, col="skyblue", border="slateblue", main="")
 #	plotMA(ensembl_cds_binom)
@@ -91,35 +93,48 @@ allCombos <- function() {
 	# Get all combinations of data comparisons
 	print("All data combinations")
 	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "hES","teratoma" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="hES_teratoma_all_genes.csv" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_hES_teratoma_all_genes.csv" )
 	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "hES","organoid" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="hES_organoid_all_genes.csv" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_hES_organoid_all_genes.csv" )
 	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "hES","differentiated" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="hES_differentiated_all_genes.csv" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_hES_differentiated_all_genes.csv" )
 	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "hES","control" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="hES_control_all_genes.csv" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_hES_control_all_genes.csv" )
 	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "hES","background" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="hES_background_all_genes.csv" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_hES_background_all_genes.csv" )
+	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "hES","mixed" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_hES_mixed_all_genes.csv" )
 	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "teratoma","organoid" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="teratoma_organoid_all_genes.csv" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_teratoma_organoid_all_genes.csv" )
 	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "teratoma","differentiated" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="teratoma_differentiated_all_genes.csv" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_teratoma_differentiated_all_genes.csv" )
 	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "teratoma","control" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="teratoma_control_all_genes.csv" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_teratoma_control_all_genes.csv" )
 	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "teratoma","background" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="teratoma_background_all_genes.csv" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_teratoma_background_all_genes.csv" )
+	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "teratoma","mixed" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_teratoma_mixed_all_genes.csv" )
 	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "organoid","differentiated" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="organoid_differentiated_all_genes.csv" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_organoid_differentiated_all_genes.csv" )
 	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "organoid","control" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="organoid_control_all_genes.csv" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_organoid_control_all_genes.csv" )
 	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "organoid","background" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="organoid_background_all_genes.csv" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_organoid_background_all_genes.csv" )
+	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "organoid","mixed" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_organoid_mixed_all_genes.csv" )
 	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "differentiated","control" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="differentiated_control_all_genes.csv" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_differentiated_control_all_genes.csv" )
 	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "differentiated","background" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="differentiated_background_all_genes.csv" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_differentiated_background_all_genes.csv" )
+	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "differentiated","mixed" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_differentiated_mixed_all_genes.csv" )
 	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "control","background" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="control_background_all_genes.csv" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_control_background_all_genes.csv" )
+	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "control","mixed" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_control_mixed_all_genes.csv" )
+	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "background","mixed" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_background_mixed_all_genes.csv" )
+
 }
 
 heatmapPlot <- function() {
@@ -127,7 +142,7 @@ heatmapPlot <- function() {
 	print("Heatmap")
 	select = order(rowMeans(counts(ensembl_cds_size)), decreasing=TRUE)[1:5000]
 	hmcol = colorRampPalette(brewer.pal(9, "GnBu"))(100)
-	pdf('r_heatmap_a_genes.pdf')
+	pdf('decemberdata_r_heatmap_genes.pdf')
 	heatmap.2(exprs(ensembl_vsd)[select,], dendrogram = c("column"),col = hmcol, trace="none", labRow = "", margin=c(10, 6))
 	dev.off()
 	heatmap.2(exprs(ensembl_vsd)[select,], dendrogram = c("column"),col = hmcol, trace="none", labRow = "", margin=c(10, 6))
@@ -183,7 +198,7 @@ deseqPCA <- function() {
 	# Principle Component Analysis plot
 	print("DESeq PCA")
 
-	pdf('r_PCA_noa_withcontrols.pdf')
+	pdf('decemberdata_r_PCA.pdf')
 	print(plotPCA(ensembl_vsd, intgroup=c('condition'), ntop=42859))
 	dev.off()
 	print(plotPCA(ensembl_vsd, intgroup=c('condition'), ntop=42859)) # 42859 genes, 120000 transcripts
@@ -331,9 +346,9 @@ getVariances <- function() {
 	print("Done writing means")
 }
 
-#dataPrep()
+dataPrep()
 
-#binomDist()
+binomDist()
 #heatmapPlot()
 #similarityPlot()
 #deseqPCA()
@@ -358,4 +373,4 @@ getVariances <- function() {
 #heatmapGenes('column1',c("\\bAXIN2\\b","\\bCA2\\b","\\bCDH1\\b","\\bCDH17\\b","\\bCDX2\\b","\\bDEF6\\b","\\bDUOX2\\b","\\bELF3\\b","\\bEPCAM\\b","\\bKLF4\\b","\\bKLF5\\b","\\bKRT20\\b","\\bLGR5\\b","\\bLYZ\\b","\\bMMP7\\b","\\bMUC13\\b","\\bMUC2\\b","\\bPLA2G2A\\b","\\bSCNN1A\\b","\\bSI\\b","\\bSLC5A1\\b","\\bSOX9\\b","\\bTERT\\b","\\bTFF3 \\b","\\bVIL1\\b","\\bWNT3A\\b"))
 #heatmapGenes('column2',c("\\bAXIN2\\b","\\bCA2\\b","\\bCDH1\\b","\\bCDH17\\b","\\bCDX2\\b","\\bCFTR\\b","\\bDEF6\\b","\\bDUOX2\\b","\\bELF3\\b","\\bEPCAM\\b","\\bKLF4\\b","\\bKLF5\\b","\\bKRT20\\b","\\bLGR5\\b","\\bLYZ\\b","\\bMMP7\\b","\\bMUC13\\b","\\bMUC2\\b","\\bPLA2G2A\\b","\\bSCNN1A\\b","\\bSI\\b","\\bSLC5A1\\b","\\bSOX9\\b","\\bTERT\\b","\\bTFF3 \\b","\\bVIL1\\b","\\bWNT3A\\b"))
 #heatmapGenes('column3',c("\\bAXIN2\\b","\\bCA2\\b","\\bCDH1\\b","\\bCDH17\\b","\\bCDX2\\b","\\bCFTR\\b","\\bDEF6\\b","\\bDUOX2\\b","\\bELF3\\b","\\bEPCAM\\b","\\bKLF4\\b","\\bKLF5\\b","\\bKRT20\\b","\\bLGR5\\b","\\bLYZ\\b","\\bMMP7\\b","\\bMUC13\\b","\\bMUC2\\b","\\bOLFM4\\b","\\bPLA2G2A\\b","\\bSCNN1A\\b","\\bSI\\b","\\bSLC5A1\\b","\\bSOX9\\b","\\bTERT\\b","\\bTFF3 \\b","\\bVIL1\\b","\\bWNT3A\\b"))
-heatmapGenes('column4',c("\\bAXIN2\\b","\\bCA2\\b","\\bCDH1\\b","\\bCDH17\\b","\\bCDX2\\b","\\bDEF6\\b","\\bDUOX2\\b","\\bELF3\\b","\\bEPCAM\\b","\\bKLF4\\b","\\bKLF5\\b","\\bKRT20\\b","\\bLGR5\\b","\\bLYZ\\b","\\bMMP7\\b","\\bMUC13\\b","\\bMUC2\\b","\\bOLFM4\\b","\\bPDX1\\b","\\bPLA2G2A\\b","\\bSCNN1A\\b","\\bSI\\b","\\bSOX9\\b","\\bTERT\\b","\\bTFF3 \\b","\\bVIL1\\b","\\bWNT3A\\b"))
+#heatmapGenes('column4',c("\\bAXIN2\\b","\\bCA2\\b","\\bCDH1\\b","\\bCDH17\\b","\\bCDX2\\b","\\bDEF6\\b","\\bDUOX2\\b","\\bELF3\\b","\\bEPCAM\\b","\\bKLF4\\b","\\bKLF5\\b","\\bKRT20\\b","\\bLGR5\\b","\\bLYZ\\b","\\bMMP7\\b","\\bMUC13\\b","\\bMUC2\\b","\\bOLFM4\\b","\\bPDX1\\b","\\bPLA2G2A\\b","\\bSCNN1A\\b","\\bSI\\b","\\bSOX9\\b","\\bTERT\\b","\\bTFF3 \\b","\\bVIL1\\b","\\bWNT3A\\b"))
