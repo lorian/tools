@@ -18,8 +18,10 @@ dataPrep <- function() {
 	print("Creating source data")
 	ensemblTable <<- read.table("r_table_noa_newdata_genenames.txt",header=TRUE,row.names=1,sep="\t")
 
+	condition <<- factor (c("background","organoid","organoid","organoid","teratoma","organoid","control","teratoma","differentiated","control","hES","hES","teratoma","organoid","organoid","organoid","new_mixed","organoid","organoid","teratoma","differentiated","background","hES","new_differentiated","organoid","differentiated","control","control","differentiated","hES","new_differentiated","control","new_mixed","new_organoid","new_organoid","control")) #_noa_newdata_genenames new samples
+#	condition <<- factor (c("background","organoid","organoid","organoid","teratoma","organoid","control","teratoma","differentiated","control","hES","hES","teratoma","organoid","organoid","organoid","Nterm","organoid","organoid","teratoma","differentiated","background","hES","Nterm","organoid","differentiated","control","control","differentiated","hES","Cterm","control","Cterm","Nterm","Cterm","control")) #_noa_newdata_genenames new samples
 #	condition <<- factor (c("background","organoid","organoid","organoid","teratoma","organoid","control","teratoma","differentiated","control","hES","hES","teratoma","organoid","organoid","organoid","mixed","organoid","organoid","teratoma","differentiated","background","hES","differentiated","organoid","differentiated","control","control","differentiated","hES","differentiated","control","mixed","organoid","organoid","control")) #_noa_newdata_genenames
-	condition <<- factor (c("background","organoid","organoid","organoid","teratoma","organoid","rectum","teratoma","differentiated","duodenum","hES","hES","teratoma","organoid","organoid","organoid","mixed","organoid","organoid","teratoma","differentiated","background","hES","differentiated","organoid","differentiated","ileum","ileum","differentiated","hES","differentiated","rectum","mixed","organoid","organoid","duodenum")) #_noa_newdata_genenames w/specific controls
+#	condition <<- factor (c("background","organoid","organoid","organoid","teratoma","organoid","rectum","teratoma","differentiated","duodenum","hES","hES","teratoma","organoid","organoid","organoid","mixed","organoid","organoid","teratoma","differentiated","background","hES","differentiated","organoid","differentiated","ileum","ileum","differentiated","hES","differentiated","rectum","mixed","organoid","organoid","duodenum")) #_noa_newdata_genenames w/specific controls
 #	condition <<- factor( c( "background","organoid","organoid","organoid","teratoma","organoid","control","teratoma","differentiated","control","hES","hES","teratoma","organoid","organoid","liver","organoid","organoid","organoid","teratoma","differentiated","background","hES","organoid","differentiated","control","breast","control","differentiated","hES","control","colon","control")) #full _noa w/IBM
 #	condition <<- factor(c("organoid","organoid","differentiated","control","background","organoid","teratoma","hES","organoid","differentiated","hES","organoid","control","differentiated","organoid","teratoma","control","organoid","organoid","teratoma","control","organoid","control","teratoma","organoid","differentiated","background","control","hES","hES")) #_quick
 #	condition <<- factor( c( "organoid","teratoma","background","organoid","hES","hES","teratoma","organoid","organoid","differentiated","control","differentiated","differentiated","organoid","organoid","differentiated","teratoma","control","hES","teratoma","control","organoid","control","organoid","control","background","organoid","organoid","hES")) #_a without HC2
@@ -73,12 +75,12 @@ outputTables <- function() {
 binomDist <- function() {
 	# Graph binomial distribution
 	print("Binomial distributions")
-	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "organoid","ileum" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_organoid_ileum_genes.csv" )
-	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "organoid","rectum" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_organoid_rectum_genes.csv" )
-	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "organoid","duodenum" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_organoid_duodenum_genes.csv" )
+	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "new_organoid","new_mixed" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_organoid_mixed_new_genes.csv" )
+	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "new_organoid","new_differentiated" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_organoid_differentiated_new_genes.csv" )
+	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "new_differentiated","new_mixed" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_differentiated_mixed_new_genes.csv" )
 
 #	hist(ensembl_cds_binom$pval, breaks=100, col="skyblue", border="slateblue", main="")
 #	plotMA(ensembl_cds_binom)
@@ -91,6 +93,7 @@ binomDist <- function() {
 
 allCombos <- function() {
 	# Get all combinations of data comparisons
+
 	print("All data combinations")
 	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "hES","teratoma" )
 	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_hES_teratoma_all_genes.csv" )
