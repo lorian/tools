@@ -3,9 +3,9 @@
 import sys
 import csv
 import numpy as np
+import string
 import matplotlib
 import matplotlib.pyplot as pyp
-import string
 
 np.set_printoptions(precision=4)
 
@@ -130,21 +130,25 @@ def calc_error(true_species,true_abundance,est_species,est_abundance):
 	diff_sq = [d*d/10000 for d in diff]
 	print "Relative root mean squared error: {0}".format(np.mean(diff_sq) ** (0.5) * 100)
 
-
+	true_sp = [x.replace('_',' ') for x in true_species]
 	# graph abundances
-	print "Graph of all true abundances (blue = est, green = true)"
 	xmax = len(true_species)-1
-	if xmax < 200: # no point in having brokenly huge graphs
-		x1 = np.array(range(0,xmax+1))
-		x2 = x1 + 0.3
-		pyp.xticks(range(0,xmax,2),[true_species[i] for i in range(0,xmax,2)],rotation=-90)
-		pyp.bar(x1,true_abundance, width=0.4, color='green')
-		pyp.bar(x2,adjusted_abundance, width=0.4, color='blue')
-		pyp.show()
+	x = np.array(range(0,xmax+1))
 
-	# graph diffs that are above average
-	print "Graph of all errors"
-	diff_combo = zip(true_species,diff)
+	ab_filter = zip(true_sp,true_abundance,adjusted_abundance)
+	ab_filter.sort( key=lambda x: x[1],reverse=True )
+	ab_species,ab_true,ab_adjusted = zip(*ab_filter)
+
+	pyp.title("Graph of all true abundances (blue = est, green = true)")
+	#pyp.xticks(range(0,xmax,2),[ab_species[i] for i in range(0,xmax,2)],rotation=-90)
+	pyp.xticks(range(0,xmax),ab_species,rotation=-90)
+	pyp.plot(x,ab_true, color='green')
+	pyp.plot(x,ab_adjusted, color='blue')
+	pyp.subplots_adjust(bottom=.5)
+	pyp.show()
+
+	# graph diffs (could graph ones above average)
+	diff_combo = zip(true_sp,diff)
 #	diff_filter = [x for x in diff_combo if diff[diff_combo.index(x)] > np.mean(diff)]
 	diff_filter = diff_combo
 	diff_filter.sort( key=lambda x: x[1],reverse=True )
@@ -155,15 +159,16 @@ def calc_error(true_species,true_abundance,est_species,est_abundance):
 	else:
 		xmax = len(diff_species)
 		if xmax < 200:
-			x1 = np.array(range(0,xmax))
+			x = np.array(range(0,xmax))
+			pyp.title("Graph of all errors")
 			pyp.xticks(range(0,xmax),diff_species,rotation=-90)
-			pyp.bar(x1,diff_ab,width=.8,color='purple')
+			pyp.bar(x,diff_ab,width=0.8,color='purple')
+			pyp.subplots_adjust(bottom=.5)
 			pyp.show()
 
 	# graph diffs for all species, not just the true ones
-	print "Graph of all abundances (blue = est, green = true)"
 	all_species = list(set(est_species + true_species))
-	if len(all_species)<200:
+	if len(all_species) > len(true_species):
 		all_true = [None] * len(all_species)
 		all_est = [None] * len(all_species)
 		for i,sp in enumerate(all_species):
@@ -178,11 +183,18 @@ def calc_error(true_species,true_abundance,est_species,est_abundance):
 	#			print "No true data for {0}".format(sp)
 				all_est[i] = 0
 		xmax = len(all_species)-1
-		x1 = np.array(range(0,xmax+1))
-		x2 = x1 + 0.3
-		pyp.xticks(range(0,xmax,2),[all_species[i] for i in range(0,xmax,2)],rotation=-90)
-		pyp.bar(x1,all_true, width=0.4, color='green')
-		pyp.bar(x2,all_est, width=0.4, color='blue')
+		all_sp = [x.replace('_',' ') for x in all_species]
+		x = np.array(range(0,xmax+1))
+
+		all_filter = zip(all_sp,all_true,all_est)
+		all_filter.sort( key=lambda x: x[1],reverse=True )
+		fil_sp,fil_true,fil_est = zip(*all_filter)
+
+		pyp.title("Graph of all abundances (blue = est, green = true)")
+		pyp.xticks(range(0,xmax),fil_sp,rotation=-90)
+		pyp.plot(x,fil_true, color='green')
+		pyp.plot(x,fil_est, color='blue')
+		pyp.subplots_adjust(bottom=.5)
 		pyp.show()
 
 
@@ -197,10 +209,10 @@ def main(argv=sys.argv):
 
 	print "Strain-level error:"
 	calc_error(true_species,true_abundance,est_species,est_abundance)
-	print "Species-level error:"
-	calc_error(true_species_alone,true_species_ab,est_species_alone,est_species_ab)
-	print "Genus-level error:"
-	calc_error(true_genus_alone,true_genus_ab,est_genus_alone,est_genus_ab)
+#	print "Species-level error:"
+#	calc_error(true_species_alone,true_species_ab,est_species_alone,est_species_ab)
+#	print "Genus-level error:"
+#	calc_error(true_genus_alone,true_genus_ab,est_genus_alone,est_genus_ab)
 
 if __name__ == "__main__":
     main()
