@@ -130,7 +130,9 @@ def calc_error(true_species,true_abundance,est_species,est_abundance):
 	diff_sq = [d*d/10000 for d in diff]
 	print "Relative root mean squared error: {0}".format(np.mean(diff_sq) ** (0.5) * 100)
 
+
 	# graph abundances
+	print "Graph of all true abundances (blue = est, green = true)"
 	xmax = len(true_species)-1
 	if xmax < 200: # no point in having brokenly huge graphs
 		x1 = np.array(range(0,xmax+1))
@@ -141,8 +143,11 @@ def calc_error(true_species,true_abundance,est_species,est_abundance):
 		pyp.show()
 
 	# graph diffs that are above average
+	print "Graph of all errors"
 	diff_combo = zip(true_species,diff)
-	diff_filter = [x for x in diff_combo if diff[diff_combo.index(x)] > np.mean(diff)]
+#	diff_filter = [x for x in diff_combo if diff[diff_combo.index(x)] > np.mean(diff)]
+	diff_filter = diff_combo
+	diff_filter.sort( key=lambda x: x[1],reverse=True )
 	try:
 		diff_species,diff_ab = zip(*diff_filter)
 	except:
@@ -156,8 +161,9 @@ def calc_error(true_species,true_abundance,est_species,est_abundance):
 			pyp.show()
 
 	# graph diffs for all species, not just the true ones
+	print "Graph of all abundances (blue = est, green = true)"
 	all_species = list(set(est_species + true_species))
-	if len(all_species) < 200:
+	if len(all_species)<200:
 		all_true = [None] * len(all_species)
 		all_est = [None] * len(all_species)
 		for i,sp in enumerate(all_species):
@@ -178,6 +184,7 @@ def calc_error(true_species,true_abundance,est_species,est_abundance):
 		pyp.bar(x1,all_true, width=0.4, color='green')
 		pyp.bar(x2,all_est, width=0.4, color='blue')
 		pyp.show()
+
 
 	return diff,np.mean(diff),np.mean(diff_sq) ** (0.5) * 100
 

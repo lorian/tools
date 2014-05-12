@@ -18,9 +18,9 @@ dataPrep <- function() {
 	print("Creating source data")
 	ensemblTable <<- read.table("r_table_noa_newdata_genenames.txt",header=TRUE,row.names=1,sep="\t")
 
-	condition <<- factor (c("background","organoid","organoid","organoid","teratoma","organoid","control","teratoma","differentiated","control","hES","hES","teratoma","organoid","organoid","organoid","new_mixed","organoid","organoid","teratoma","differentiated","background","hES","new_differentiated","organoid","differentiated","control","control","differentiated","hES","new_differentiated","control","new_mixed","new_organoid","new_organoid","control")) #_noa_newdata_genenames new samples
+#	condition <<- factor (c("background","organoid","organoid","organoid","teratoma","organoid","control","teratoma","differentiated","control","hES","hES","teratoma","organoid","organoid","organoid","new_mixed","organoid","organoid","teratoma","differentiated","background","hES","new_differentiated","organoid","differentiated","control","control","differentiated","hES","new_differentiated","control","new_mixed","new_organoid","new_organoid","control")) #_noa_newdata_genenames new samples
 #	condition <<- factor (c("background","organoid","organoid","organoid","teratoma","organoid","control","teratoma","differentiated","control","hES","hES","teratoma","organoid","organoid","organoid","Nterm","organoid","organoid","teratoma","differentiated","background","hES","Nterm","organoid","differentiated","control","control","differentiated","hES","Cterm","control","Cterm","Nterm","Cterm","control")) #_noa_newdata_genenames new samples
-#	condition <<- factor (c("background","organoid","organoid","organoid","teratoma","organoid","control","teratoma","differentiated","control","hES","hES","teratoma","organoid","organoid","organoid","mixed","organoid","organoid","teratoma","differentiated","background","hES","differentiated","organoid","differentiated","control","control","differentiated","hES","differentiated","control","mixed","organoid","organoid","control")) #_noa_newdata_genenames
+	condition <<- factor (c("background","organoid","organoid","organoid","teratoma","organoid","control","teratoma","differentiated","control","hES","hES","teratoma","organoid","organoid","organoid","mixed","organoid","organoid","teratoma","differentiated","background","hES","differentiated","organoid","differentiated","control","control","differentiated","hES","differentiated","control","mixed","organoid","organoid","control")) #_noa_newdata_genenames
 #	condition <<- factor (c("background","organoid","organoid","organoid","teratoma","organoid","rectum","teratoma","differentiated","duodenum","hES","hES","teratoma","organoid","organoid","organoid","mixed","organoid","organoid","teratoma","differentiated","background","hES","differentiated","organoid","differentiated","ileum","ileum","differentiated","hES","differentiated","rectum","mixed","organoid","organoid","duodenum")) #_noa_newdata_genenames w/specific controls
 #	condition <<- factor( c( "background","organoid","organoid","organoid","teratoma","organoid","control","teratoma","differentiated","control","hES","hES","teratoma","organoid","organoid","liver","organoid","organoid","organoid","teratoma","differentiated","background","hES","organoid","differentiated","control","breast","control","differentiated","hES","control","colon","control")) #full _noa w/IBM
 #	condition <<- factor(c("organoid","organoid","differentiated","control","background","organoid","teratoma","hES","organoid","differentiated","hES","organoid","control","differentiated","organoid","teratoma","control","organoid","organoid","teratoma","control","organoid","control","teratoma","organoid","differentiated","background","control","hES","hES")) #_quick
@@ -75,13 +75,16 @@ outputTables <- function() {
 binomDist <- function() {
 	# Graph binomial distribution
 	print("Binomial distributions")
-	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "new_organoid","new_mixed" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_organoid_mixed_new_genes.csv" )
-	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "new_organoid","new_differentiated" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_organoid_differentiated_new_genes.csv" )
-	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "new_differentiated","new_mixed" )
-	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="decemberdata_differentiated_mixed_new_genes.csv" )
-
+	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "organoid","hES" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="organoid_hES_new_genes.csv" )
+	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "organoid","control" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="organoid_control_new_genes.csv" )
+	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "organoid","background" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="organoid_background_new_genes.csv" )
+	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "organoid","teratoma" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="organoid_teratoma_new_genes.csv" )
+	ensembl_cds_binom = nbinomTest( ensembl_cds_disp, "organoid","differentiated" )
+	write.csv( ensembl_cds_binom[ order(ensembl_cds_binom$pval), ], file="organoid_differentiated_new_genes.csv" )
 #	hist(ensembl_cds_binom$pval, breaks=100, col="skyblue", border="slateblue", main="")
 #	plotMA(ensembl_cds_binom)
 
@@ -165,10 +168,10 @@ heatmapGenes <- function(listname, rawgenelist) {
 #	norm_vsd = 100*selected_vsd/rowSums(selected_vsd)
 
 	pdf(paste('r_heatmap_noa_',listname,'.pdf'),width=10, height=10)
-	heatmap.2(exprs(ensembl_vsd)[rows,],col = hmcol, trace="none", margin=c(15, 6),dendrogram = c("both"),)
+	heatmap.2(exprs(ensembl_vsd)[rows,],col = hmcol, trace="none", margin=c(15, 20),dendrogram = c("both"),)
 	dev.off()
 	dev.new(height=10)
-	heatmap.2(exprs(ensembl_vsd)[rows,],col = hmcol, trace="none", margin=c(15, 6),dendrogram = c("both"),)
+	heatmap.2(exprs(ensembl_vsd)[rows,],col = hmcol, trace="none", margin=c(15, 20),dendrogram = c("both"),)
 #	heatmap.2(exprs(ensembl_vsd)[rows,cols_paired],col = hmcol, trace="none", margin=c(15, 6),dendrogram = c("row"), Colv=FALSE) # no column reordering
 
 }
@@ -320,9 +323,9 @@ getVariances <- function() {
 	teratoma_cols = which( condition == 'teratoma' )
 
 	# Check data is correct
-	print(head(counts( ensembl_cds_size, normalized=TRUE )["OPA3",organoid_cols]))
-	print(head(genefilter::rowVars( counts( ensembl_cds_size, normalized=TRUE )["OPA3",organoid_cols])))
-	print(head(rowMeans(counts(ensembl_cds_size, normalized=TRUE)["OPA3",organoid_cols])))
+#	print(head(counts( ensembl_cds_size, normalized=TRUE )["OPA3",organoid_cols]))
+#	print(head(genefilter::rowVars( counts( ensembl_cds_size, normalized=TRUE )["OPA3",organoid_cols])))
+#	print(head(rowMeans(counts(ensembl_cds_size, normalized=TRUE)["OPA3",organoid_cols])))
 
 	print("Wrinting variances to file")
 	organoid_var = genefilter::rowVars( counts( ensembl_cds_size, normalized=TRUE )[,organoid_cols])
@@ -349,9 +352,9 @@ getVariances <- function() {
 	print("Done writing means")
 }
 
-dataPrep()
+#dataPrep()
 
-binomDist()
+#binomDist()
 #heatmapPlot()
 #similarityPlot()
 #deseqPCA()
@@ -377,3 +380,5 @@ binomDist()
 #heatmapGenes('column2',c("\\bAXIN2\\b","\\bCA2\\b","\\bCDH1\\b","\\bCDH17\\b","\\bCDX2\\b","\\bCFTR\\b","\\bDEF6\\b","\\bDUOX2\\b","\\bELF3\\b","\\bEPCAM\\b","\\bKLF4\\b","\\bKLF5\\b","\\bKRT20\\b","\\bLGR5\\b","\\bLYZ\\b","\\bMMP7\\b","\\bMUC13\\b","\\bMUC2\\b","\\bPLA2G2A\\b","\\bSCNN1A\\b","\\bSI\\b","\\bSLC5A1\\b","\\bSOX9\\b","\\bTERT\\b","\\bTFF3 \\b","\\bVIL1\\b","\\bWNT3A\\b"))
 #heatmapGenes('column3',c("\\bAXIN2\\b","\\bCA2\\b","\\bCDH1\\b","\\bCDH17\\b","\\bCDX2\\b","\\bCFTR\\b","\\bDEF6\\b","\\bDUOX2\\b","\\bELF3\\b","\\bEPCAM\\b","\\bKLF4\\b","\\bKLF5\\b","\\bKRT20\\b","\\bLGR5\\b","\\bLYZ\\b","\\bMMP7\\b","\\bMUC13\\b","\\bMUC2\\b","\\bOLFM4\\b","\\bPLA2G2A\\b","\\bSCNN1A\\b","\\bSI\\b","\\bSLC5A1\\b","\\bSOX9\\b","\\bTERT\\b","\\bTFF3 \\b","\\bVIL1\\b","\\bWNT3A\\b"))
 #heatmapGenes('column4',c("\\bAXIN2\\b","\\bCA2\\b","\\bCDH1\\b","\\bCDH17\\b","\\bCDX2\\b","\\bDEF6\\b","\\bDUOX2\\b","\\bELF3\\b","\\bEPCAM\\b","\\bKLF4\\b","\\bKLF5\\b","\\bKRT20\\b","\\bLGR5\\b","\\bLYZ\\b","\\bMMP7\\b","\\bMUC13\\b","\\bMUC2\\b","\\bOLFM4\\b","\\bPDX1\\b","\\bPLA2G2A\\b","\\bSCNN1A\\b","\\bSI\\b","\\bSOX9\\b","\\bTERT\\b","\\bTFF3 \\b","\\bVIL1\\b","\\bWNT3A\\b"))
+#heatmapGenes('finalset',c("\\bAXIN2\\b","\\bLGR5\\b","\\bATOH1\\b","\\bMSI1\\b","\\bEPHB2\\b","\\bDCLK1\\b","\\bLRIG1\\b","\\bTERT\\b","\\bAXIN2\\b","\\bOLFM4\\b","\\bASCL2\\b","\\bMIXL1\\b"))
+heatmapGenes('solo',c("\\bTHAP9$\\b","\\bLGR5\\b"))

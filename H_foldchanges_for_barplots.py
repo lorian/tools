@@ -17,17 +17,17 @@ def make_dict():
 	global dictlist
 	global varlist
 	global meanlist
-	filelist = ['organoid_control_all_genes.csv','organoid_hES_all_genes.csv','organoid_background_all_genes.csv','organoid_differentiated_all_genes.csv','organoid_teratoma_all_genes.csv','organoid_duodenum_all_genes.csv','organoid_ileum_all_genes.csv','organoid_rectum_all_genes.csv']
+	filelist = ['organoid_control_new_genes.csv','organoid_hES_new_genes.csv','organoid_background_new_genes.csv','organoid_differentiated_new_genes.csv','organoid_teratoma_new_genes.csv']
 
 	for fn in filelist:
-		with open(os.path.join('gene_tables_w21_genenames', fn), 'r') as f:
+		with open(os.path.join('decemberdata', fn), 'r') as f:
 			data = {rec[1]:rec for rec in csv.reader(f, delimiter=',')}
 
 		dictlist[st.split(fn,'_')[1]] = data
 
-	var_file = open('variances.txt','r')
+	var_file = open('decemberdata/variances.txt','r')
 	varlist = {rec[0]:rec[1:] for rec in csv.reader(var_file, delimiter='\t')}
-	mean_file = open('means.txt','r')
+	mean_file = open('decemberdata/means.txt','r')
 	meanlist = {rec[0]:rec[1:] for rec in csv.reader(mean_file, delimiter='\t')}
 
 def processgenes(listname,genelist):
@@ -68,4 +68,6 @@ make_dict()
 #processgenes('maturity',['AXIN2','CDH1','CDH17','CDX2','DEFA5','DEF6','DUOX2','ELF3','EPCAM','KLF4','KLF5','LGR5','LYZ','MUC13','MUC2','SOX9','VIL1','SI','MMP7','PLA2G2A','WNT3A','ATOH1','TFF3','TERT'])
 #processgenes('adultstem',['LGR5','SOX9','KLF4','KLF5','OLFM4','TERT'])
 #processgenes('pattern',['BARX1','SFRP1','HHEX','SOX2','DKK1','FABP2','CDX1','CDX2','HOXC5'])
-processgenes('heatmap',["AFP","ANPEP","ASCL2","AXIN2","BARX1","CA2","CA2","CD34","CDH1","CDH17","CDX1","CDX2","CDX4","CLCA4","CLDN6","CTNNB1","CXCR4","DEF6","DKK1","DUOX2","DUOX2","ELF3","EOMES","EPCAM","FABP1","FABP2","FABP2","FOXA1","FOXA2","GATA4","GATA4","GATA6","GDF1","GDF3","GSC","GUCA2A","HHEX","HNF1B","HNF4A","HOXC5","KIT","KLF4","KLF5","KRT19","KRT20","LGR5","LYZ","MEP1A","MGAM","MIXL1","MKI67","MMP7","MUC13","MUC17","MUC2","NKX2-1","OLFM4","PDX1","PLA2G2A","REG4","SALL4","SCNN1A","SFRP1","SI","SLC15A1","SLC5A1","SOX17","SOX2","SOX7","SOX9","TERT","TFF2","TFF3","VIL1","VILL","WNT3A"])
+#processgenes('heatmap',["AFP","ANPEP","ASCL2","AXIN2","BARX1","CA2","CA2","CD34","CDH1","CDH17","CDX1","CDX2","CDX4","CLCA4","CLDN6","CTNNB1","CXCR4","DEF6","DKK1","DUOX2","DUOX2","ELF3","EOMES","EPCAM","FABP1","FABP2","FABP2","FOXA1","FOXA2","GATA4","GATA4","GATA6","GDF1","GDF3","GSC","GUCA2A","HHEX","HNF1B","HNF4A","HOXC5","KIT","KLF4","KLF5","KRT19","KRT20","LGR5","LYZ","MEP1A","MGAM","MIXL1","MKI67","MMP7","MUC13","MUC17","MUC2","NKX2-1","OLFM4","PDX1","PLA2G2A","REG4","SALL4","SCNN1A","SFRP1","SI","SLC15A1","SLC5A1","SOX17","SOX2","SOX7","SOX9","TERT","TFF2","TFF3","VIL1","VILL","WNT3A"])
+#processgenes('qPCRcompare',["LGR5","SOX9","CDX2","CDX1","KLF4","KLF5","CDH1","MUC2","VIL1","SI","ALPI","CDH2","NANOG","GATA4","FGF8","SOX17","ACTB","DEFA5","DEFA6"])
+processgenes('finalset',["AXIN2","LGR5","ATOH1","MSI1","EPHB2","DCLK1","LRIG1","TERT","AXIN2","OLFM4","ASCL2","MIXL1","NES","TFF3"])
