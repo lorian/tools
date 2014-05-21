@@ -6,8 +6,11 @@ import numpy as np
 import string
 import matplotlib
 import matplotlib.pyplot as pyp
+from pylab import *
+import math
 
 np.set_printoptions(precision=4)
+rcParams['figure.figsize'] = 30, 15
 
 def collapse_strains(strains,abundance):
 	# Group strains together by species and genus
@@ -40,39 +43,62 @@ def process_input(filename,size):
 	input_data = input_data[1:] #remove header row
 
 	if suffix == 'xprs': #express file
-		input_data.sort(key=lambda x:x[1]) # sort alphabetically by species
-		species = zip(*input_data)[1] # express species names are in second column
-		est_counts = np.array([float(i) for i in zip(*input_data)[6]]) # used when dataset abundances are given in raw counts
+		input_species = zip(*input_data)[1] # express species names are in second column
+		input_counts = np.array([float(i) for i in zip(*input_data)[6]]) # used when dataset abundances are given in raw counts
 		fpkm = np.array([float(i) for i in zip(*input_data)[10]]) # used when dataset abundances are given as percentages
-		fpkm_total = np.sum(fpkm)
-		est_abundance = fpkm*100/fpkm_total
+		print np.sum(fpkm)
+		input_array = zip(input_species,fpkm,input_counts)
+		no_plasmids = [r for r in input_array if r[0].find('plasmid') == -1] # remove plasmids from list
+		input_species,fpkm,input_counts = zip(*no_plasmids)
+		print np.sum(fpkm)
+		input_abundance = np.array(fpkm)*100/np.sum(fpkm)
 	elif suffix == 'txt': #gasic file
-		input_data.sort(key=lambda x:x[0]) # sort alphabetically by species
-		species = zip(*input_data)[0] # gasic species names are in first column
-		est_counts = np.array([float(i) for i in zip(*input_data)[2]]) # used when dataset abundances are given in raw counts
-		est_abundance = est_counts/(np.sum(est_counts)*np.array(size)) # used when dataset abundances are given as percentages
-		est_abundance = 100*est_abundance/np.sum(est_abundance) # normalize
+		input_species = zip(*input_data)[0] # gasic species names are in first column
+		input_counts = np.array([float(i) for i in zip(*input_data)[2]]) # used when dataset abundances are given in raw counts
+		input_array = zip(input_species,input_counts)
+		no_plasmids = [r for r in input_array if r[0].find('plasmid') == -1] # remove plasmids from list
+		input_species,input_counts = zip(*no_plasmids)
+		input_abundance = input_counts/(np.sum(input_counts)*np.array(size)) # used when dataset abundances are given as percentages
+		input_abundance = 100*input_abundance/np.sum(input_abundance) # normalize
 	else:
 		print "File is not supported input type"
 
 	#if abbreviations are found, see if they match large genome database
 	try:
-		min(i for i, sp in enumerate(species) if 'BACT_' in sp) #looks for BACT_ in any species name
+		min(i for i, sp in enumerate(input_species) if 'BACT_' in sp) #looks for BACT_ in any species name
 	except:
-		pass
+		species = input_species
 	else:
 		print "Replacing genome abbreviations with full names"
 		with open('/home/lanthala/compbio_tools/M_compare_metagenome_results_to_truth_biggenomenames.txt', 'r') as biggenomefile:
 			big_genome = dict(csv.reader(biggenomefile))
-		species = [big_genome[s.partition('|')[0]] if s.partition('|')[0] in big_genome.keys() else s for s in species]
+		species = [big_genome[s.partition('|')[0]] if s.partition('|')[0] in big_genome.keys() else s for s in input_species]
 
 	# Force species to be lowercase, underscored, and without punctuation
 	bad_punct = "!\"#$%&'()*+,-./:;<=>?@[\]^`{|}~" # string.punctuation without _
 	species = [s.lower().translate(string.maketrans("",""),bad_punct).replace(" ","_") for s in species]
 
-	est_species_alone, est_species_ab, est_genus_alone, est_genus_ab = collapse_strains(species,est_abundance)
+	# Sum duplicate species (stopgap fix!!)
+	dup_data = zip(species,input_abundance,input_counts)
+	print len(dup_data)
+	set_ab = {}
+	set_co = {}
+	for sp,ab,co in dup_data:
+		set_ab.setdefault(sp,[]).append(ab)
+		set_co.setdefault(sp,[]).append(co)
+	assert(set_ab.keys() == set_co.keys())
+	set_species = set_ab.keys()
+	set_abundance = [math.fsum(v) for k,v in set_ab.items()]
+	set_counts = [math.fsum(v) for k,v in set_co.items()]
 
-	return species,est_abundance,est_counts,est_species_alone,est_species_ab,est_genus_alone,est_genus_ab
+	# sort alphabetically by species
+	set_data = zip(set_species,set_abundance,set_counts)
+	set_data.sort(key=lambda x:x[0])
+	set_species,set_abundance,set_counts = zip(*set_data)
+	print len(set_data)
+
+	est_species_alone, est_species_ab, est_genus_alone, est_genus_ab = collapse_strains(set_species,set_abundance)
+	return list(set_species),set_abundance,set_counts,est_species_alone,est_species_ab,est_genus_alone,est_genus_ab
 
 def dataset_truth(dataset):
 	# truth is in format |species|abundance|counts|genome size| where undefined counts is 0
@@ -130,24 +156,30 @@ def calc_error(true_species,true_abundance,est_species,est_abundance):
 	diff_sq = [d*d/10000 for d in diff]
 	print "Relative root mean squared error: {0}".format(np.mean(diff_sq) ** (0.5) * 100)
 
+	return diff,adjusted_abundance
+
+def graph_error(true_species,true_abundance,est_species,est_abundance,adjusted_abundance,diff,expname,tier):
 	true_sp = [x.replace('_',' ') for x in true_species]
-	# graph abundances
-	xmax = len(true_species)-1
-	x = np.array(range(0,xmax+1))
+
+	# graph true abundances
+	xmax = len(true_species)
+	x = np.array(range(0,xmax))
 
 	ab_filter = zip(true_sp,true_abundance,adjusted_abundance)
 	ab_filter.sort( key=lambda x: x[1],reverse=True )
 	ab_species,ab_true,ab_adjusted = zip(*ab_filter)
 
-	pyp.title("Graph of all true abundances (blue = est, green = true)")
+	pyp.title("Graph of true {1}-level abundances in {0} (blue = est, green = true)".format(expname,tier))
 	#pyp.xticks(range(0,xmax,2),[ab_species[i] for i in range(0,xmax,2)],rotation=-90)
 	pyp.xticks(range(0,xmax),ab_species,rotation=-90)
 	pyp.plot(x,ab_true, color='green')
 	pyp.plot(x,ab_adjusted, color='blue')
 	pyp.subplots_adjust(bottom=.5)
-	pyp.show()
+	pyp.savefig(expname +'_'+ tier +'_abundances.png')
+#	pyp.show()
+	pyp.clf()
 
-	# graph diffs (could graph ones above average)
+	# graph diffs
 	diff_combo = zip(true_sp,diff)
 #	diff_filter = [x for x in diff_combo if diff[diff_combo.index(x)] > np.mean(diff)]
 	diff_filter = diff_combo
@@ -160,59 +192,87 @@ def calc_error(true_species,true_abundance,est_species,est_abundance):
 		xmax = len(diff_species)
 		if xmax < 200:
 			x = np.array(range(0,xmax))
-			pyp.title("Graph of all errors")
+			pyp.title("Graph of errors in present species in {0}-level {1}".format(tier,expname))
 			pyp.xticks(range(0,xmax),diff_species,rotation=-90)
 			pyp.bar(x,diff_ab,width=0.8,color='purple')
 			pyp.subplots_adjust(bottom=.5)
-			pyp.show()
+			pyp.savefig(expname +'_'+ tier +'_errors.png')
+#			pyp.show()
+			pyp.clf()
 
-	# graph diffs for all species, not just the true ones
+	# graph abundances for all species, not just the true ones, if above mean
 	all_species = list(set(est_species + true_species))
+	mean_ab = sum(est_abundance)/len(est_abundance)
 	if len(all_species) > len(true_species):
-		all_true = [None] * len(all_species)
-		all_est = [None] * len(all_species)
+		print "Filtering out any estimated results under the mean abundance of {0}".format(mean_ab)
+		present_true = []
+		present_est = []
+		present_species = []
 		for i,sp in enumerate(all_species):
-			try:
-				all_true[i] = true_abundance[true_species.index(sp)]
-			except:
-	#			print "No true data for {0}".format(sp)
-				all_true[i] = 0
-			try:
-				all_est[i] = est_abundance[est_species.index(sp)]
-			except:
-	#			print "No true data for {0}".format(sp)
-				all_est[i] = 0
-		xmax = len(all_species)-1
-		all_sp = [x.replace('_',' ') for x in all_species]
-		x = np.array(range(0,xmax+1))
+			if (sp in true_species) or (sp in est_species and est_abundance[est_species.index(sp)]>mean_ab): #only include species if it has a non-zero estimate or non-zero actual abundance
+				present_species.append(sp)
+				try:
+					present_est.append(est_abundance[est_species.index(sp)])
+				except:
+					present_est.append(0)
+				try:
+					present_true.append(true_abundance[true_species.index(sp)])
+				except:
+						present_true.append(0)
 
-		all_filter = zip(all_sp,all_true,all_est)
+		xmax = len(present_species)
+		present_sp = [x.replace('_',' ') for x in present_species]
+		x = np.array(range(0,xmax))
+
+		# sort based on true abundance
+		all_filter = zip(present_sp,present_true,present_est)
 		all_filter.sort( key=lambda x: x[1],reverse=True )
 		fil_sp,fil_true,fil_est = zip(*all_filter)
 
-		pyp.title("Graph of all abundances (blue = est, green = true)")
+		pyp.title("Graph of all above-average estimated abundances in {0} at {1}-level (blue = est, green = true)".format(expname,tier))
 		pyp.xticks(range(0,xmax),fil_sp,rotation=-90)
 		pyp.plot(x,fil_true, color='green')
 		pyp.plot(x,fil_est, color='blue')
 		pyp.subplots_adjust(bottom=.5)
-		pyp.show()
+		pyp.savefig(expname +'_'+ tier +'_sigabundances.png')
+#		pyp.show()
+		pyp.clf()
 
+		# sort based on name
+		all_filter = zip(present_sp,present_true,present_est)
+		all_filter.sort( key=lambda x: x[0],reverse=True )
+		fil_sp,fil_true,fil_est = zip(*all_filter)
 
-	return diff,np.mean(diff),np.mean(diff_sq) ** (0.5) * 100
+		pyp.title("Graph of all above-average estimated abundances in {0} at {1}-level (blue = est, green = true)".format(expname,tier))
+		pyp.xticks(range(0,xmax),fil_sp,rotation=-90)
+		pyp.plot(x,fil_true, color='green')
+		pyp.plot(x,fil_est, color='blue')
+		pyp.subplots_adjust(bottom=.5)
+		pyp.savefig(expname +'_'+ tier +'_sigabundances2.png')
+#		pyp.show()
+		pyp.clf()
+
+	return
 
 def main(argv=sys.argv):
 	filename = argv[1]
+	exp_name = filename.partition('_')[0] # will be used for graph-naming purposes
 	dataset = argv[2] #i100 or simLC
 
 	true_species,true_abundance,true_counts,true_size,true_species_alone,true_species_ab,true_genus_alone,true_genus_ab = dataset_truth(dataset)
 	est_species,est_abundance,est_counts,est_species_alone,est_species_ab,est_genus_alone,est_genus_ab = process_input(filename,true_size)
 
 	print "Strain-level error:"
-	calc_error(true_species,true_abundance,est_species,est_abundance)
-#	print "Species-level error:"
-#	calc_error(true_species_alone,true_species_ab,est_species_alone,est_species_ab)
-#	print "Genus-level error:"
-#	calc_error(true_genus_alone,true_genus_ab,est_genus_alone,est_genus_ab)
+	diff,adjusted_abundance = calc_error(true_species,true_abundance,est_species,est_abundance)
+	graph_error(true_species,true_abundance,est_species,est_abundance,adjusted_abundance,diff,exp_name,'strain')
+	'''
+	print "Species-level error:"
+	diff,adjusted_abundance = calc_error(true_species_alone,true_species_ab,est_species_alone,est_species_ab)
+	graph_error(true_species_alone,true_species_ab,est_species_alone,est_species_ab,adjusted_abundance,diff,exp_name,'species')
+	print "Genus-level error:"
+	diff,adjusted_abundance = calc_error(true_genus_alone,true_genus_ab,est_genus_alone,est_genus_ab)
+	graph_error(true_genus_alone,true_genus_ab,est_genus_alone,est_genus_ab,adjusted_abundance,diff,exp_name,'genus')
+	'''
 
 if __name__ == "__main__":
     main()
