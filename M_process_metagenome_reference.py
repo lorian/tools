@@ -6,6 +6,8 @@
 #	Split into files of less than 3.6 billion characters for bowtie2 index (done)
 #		note that the plasmid file never gets too big, so I don't bother checking if I should split it
 
+#	check that all lines begin as expected: with > or with nucleotides
+
 import sys
 import os
 
@@ -28,7 +30,6 @@ file_count_p = 0
 line_count = 0
 
 # Open files
-
 genomes_string = filename.rsplit('.', 1)[0] + "_genomes_{0}.mfa" #mfa file format is for compatibility with my mass-indexing script
 plasmids_string = filename.rsplit('.', 1)[0] + "_plasmids_{0}.mfa"
 
