@@ -84,7 +84,7 @@ def main():
 	# Run bowtie2
 	all_suffixes = ['_g0', '_g1', '_g2', '_p'] # unable to figure out a way to automatically generate these
 	for i,fasta in enumerate(all_fastas):
-		if missing_file(test_basename + all_suffixes[i]):
+		if missing_file(test_basename + all_suffixes[i] + ".SAM"):
 			script.write('bowtie2 -a -t -p {0} --local -x {1} -1 {2} -2 {3} -S {4}.SAM \\\n&& '
 		                 .format(cores,fasta.rpartition(".")[0],fastq_file_r1,fastq_file_r2,test_basename + all_suffixes[i]))
 
