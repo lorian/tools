@@ -11,6 +11,7 @@ import os
 
 split_size = 3500000000 # 3.5gb
 
+#Note: File needs to be sorted!
 filename = ""
 iterarg = iter(sys.argv)
 next(iterarg) #skip name of function
@@ -36,7 +37,7 @@ fa_genomes.seek(0) #overwrite if it exists
 fa_plasmids = open(plasmids_string.format(file_count_p), 'wt')
 fa_plasmids.seek(0) #overwrite if it exists
 
-last_species = ""
+last_species = "."
 last_type = ""
 
 for line in mfa:
@@ -51,8 +52,10 @@ for line in mfa:
 			last_type = 'genome'
 			species,x,y = line.partition('|')
 			if last_species == species:
+				print "Species duplicate of {0} in {1}".format(species,line)
 				fa_genomes.write('NNNNNNNNNN') # potential gap
 			else:
+				print "Species NOT duplicate of {0} in {1}".format(last_species,line)
 				# Split file past size limit, but only between species entries
 				fa_genomes.flush()
 				filesize = os.fstat( fa_genomes.fileno() )
