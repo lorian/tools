@@ -8,6 +8,8 @@ import matplotlib
 import matplotlib.pyplot as pyp
 from pylab import *
 import math
+import pickle
+import lanthpy
 
 np.set_printoptions(precision=4)
 rcParams['figure.figsize'] = 20, 10
@@ -63,19 +65,7 @@ def process_input(filename,size):
 	else:
 		print "File is not supported input type"
 
-	#if abbreviations are found, see if they match large genome database
-	try:
-		min(i for i, sp in enumerate(input_species) if 'BACT_' in sp) #looks for BACT_ in any species name
-	except:
-		species = input_species
-	else:
-		with open('/home/lanthala/compbio_tools/M_compare_metagenome_results_to_truth_biggenomenames.txt', 'r') as biggenomefile:
-			big_genome = dict(csv.reader(biggenomefile))
-		species = [big_genome[s.partition('|')[0]] if s.partition('|')[0] in big_genome.keys() else s for s in input_species]
-
-	# Force species to be lowercase, underscored, and without punctuation
-	bad_punct = "!\"#$%&'()*+,-./:;<=>?@[\]^`{|}~" # string.punctuation without _
-	species = [s.lower().translate(string.maketrans("",""),bad_punct).replace(" ","_") for s in species]
+	species = lanthpy.genome_name_cleanup(input_species)
 
 	# Sum duplicate species (stopgap fix!!)
 	dup_data = zip(species,input_abundance,input_counts)
@@ -236,6 +226,7 @@ def graph_error(true_species,true_abundance,est_species,est_abundance,adjusted_a
 	# graph diffs
 	if len(all_species) == len(true_species):
 		diff_combo = zip(true_sp,diff)
+		pickle.dump(diff_combo,open(expname+"_diffs.pickle",'w'))
 		diff_filter = diff_combo
 		diff_filter.sort( key=lambda x: x[1],reverse=True )
 		try:
@@ -260,6 +251,7 @@ def graph_error(true_species,true_abundance,est_species,est_abundance,adjusted_a
 			total_diff.append(100*(a-present_true[i])/max(a,present_true[i]))
 
 		diff_combo = zip(present_sp,total_diff)
+		pickle.dump(diff_combo,open(expname+"_diffs.pickle",'w'))
 		diff_filter = diff_combo
 		diff_filter.sort( key=lambda x: x[1],reverse=True )
 		try:
@@ -294,10 +286,10 @@ def main(argv=sys.argv):
 	graph_error(true_species,true_abundance,est_species,est_abundance,adjusted_abundance,diff,exp_name,'strain',True)
 	print "Species-level error:"
 	diff,adjusted_abundance = calc_error(true_species_alone,true_species_ab,est_species_alone,est_species_ab)
-	graph_error(true_species_alone,true_species_ab,est_species_alone,est_species_ab,adjusted_abundance,diff,exp_name,'species')
+#	graph_error(true_species_alone,true_species_ab,est_species_alone,est_species_ab,adjusted_abundance,diff,exp_name,'species')
 	print "Genus-level error:"
 	diff,adjusted_abundance = calc_error(true_genus_alone,true_genus_ab,est_genus_alone,est_genus_ab)
-	graph_error(true_genus_alone,true_genus_ab,est_genus_alone,est_genus_ab,adjusted_abundance,diff,exp_name,'genus')
+#	graph_error(true_genus_alone,true_genus_ab,est_genus_alone,est_genus_ab,adjusted_abundance,diff,exp_name,'genus')
 
 
 if __name__ == "__main__":
