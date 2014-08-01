@@ -44,19 +44,20 @@ def insert_suffix(filename,suffix,extension=""):
 
 def main():
 	# Filename constants
-	test_basename = 'testL'
-	version = '1.2'
+	test_basename = 'testM'
+	express_outputname = 'testM2' # because sometimes the express run is the only difference
+	version = '1.3'
 	cores = 40
 	raw_fasta_file = 'Martin_etal_TextS3_13Dec2011.fasta'
-	fastq_file_r1 = "illumina_100species_trimmed.1.fq.gz"
-	fastq_file_r2 = "illumina_100species_trimmed.2.fq.gz"
-	i100_alignment = 'testJ.SAM'
+	fastq_file_r1 = "illumina_100species.1.fq.gz"
+	fastq_file_r2 = "illumina_100species.2.fq.gz"
+	i100_alignment = 'testE.SAM'
 	i100_fasta = 'illumina_100genomes.mfa'
-	express_cycles = 20
-	express_f = 0.85
+	express_cycles = 50
+	express_f = 0.95
 
 	script = open("M_pipeline_{0}.sh".format(test_basename),'w')
-	script.write("# Version {0} -- used for {1}\n".format(version,test_basename))
+	script.write("# Version {0} -- used for {1}\n".format(version,express_outputname))
 
 	# Removes pound sign from fasta file
 	cleaned_fasta_file = insert_suffix(raw_fasta_file, '_poundless') # Martin_etal_TextS3_13Dec2011_poundless.fasta
@@ -116,13 +117,12 @@ def main():
 		             .format(i100_fasta," ".join([f for f in all_fastas]),merged_all_fastas))
 
 	# Run express (assuming this will always be run)
-	express_dir = merged_sam_file.rpartition(".")[0] # testL_J
 	script.write('express -f {0} -o {1} --max-indel-size 100 -B {2} {3} {4}\n&& '
-	             .format(express_f,express_dir,express_cycles,merged_all_fastas,sorted_bam_file))
+	             .format(express_f,express_outputname,express_cycles,merged_all_fastas,sorted_bam_file))
 
 	# Rename express output and move to parent directory
-	script.write('mv {0}/results.xprs {0}_results.xprs\n&& '.format(express_dir)) # testL_J_results.xprs
-	script.write('mv {0}/params.xprs {0}_params.xprs'.format(express_dir)) # testL_J_params.xprs
+	script.write('mv {0}/results.xprs {0}_results.xprs\n&& '.format(express_outputname)) # testL2_results.xprs
+	script.write('mv {0}/params.xprs {0}_params.xprs'.format(express_outputname)) # testL2_params.xprs
 
 if __name__ == '__main__':
 	main()
