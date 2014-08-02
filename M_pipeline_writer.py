@@ -117,7 +117,7 @@ def main():
 		             .format(i100_fasta," ".join([f for f in all_fastas]),merged_all_fastas))
 
 	# Run express (assuming this will always be run)
-	script.write('express -f {0} -o {1} --max-indel-size 100 -B {2} {3} {4}\n&& '
+	script.write('express -f {0} -o{1} --max-indel-size 100 -B {2} {3} {4}\n&& '
 	             .format(express_f,express_outputname,express_cycles,merged_all_fastas,sorted_bam_file))
 
 	# Rename express output and move to parent directory
