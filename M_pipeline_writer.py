@@ -56,7 +56,7 @@ def main():
 	express_cycles = 50
 	express_f = 0.95
 
-	script = open("M_pipeline_{0}.sh".format(test_basename),'w')
+	script = open("M_pipeline_{0}.sh".format(express_outputname),'w')
 	script.write("# Version {0} -- used for {1}\n".format(version,express_outputname))
 
 	# Removes pound sign from fasta file
