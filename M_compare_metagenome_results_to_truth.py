@@ -12,7 +12,6 @@ import pickle
 import lanthpy
 
 np.set_printoptions(precision=4)
-rcParams['figure.figsize'] = 20, 10
 
 def collapse_strains(strains,abundance):
 	""" Group strains together by species and genus """
@@ -154,7 +153,8 @@ def calc_error(true_species,true_abundance,est_species,est_abundance):
 
 	return diff,adjusted_abundance
 
-def graph_error(true_species,true_abundance,est_species,est_abundance,adjusted_abundance,diff,expname,tier,showgraphs=False):
+def graph_error(true_species, true_abundance, est_species, est_abundance,
+				adjusted_abundance, diff, expname, tier, showgraphs=False):
 	true_sp = [x.replace('_',' ') for x in true_species]
 	all_species = list(set(est_species + true_species))
 
@@ -181,9 +181,15 @@ def graph_error(true_species,true_abundance,est_species,est_abundance,adjusted_a
 		ab_filter.sort( key=lambda x: x[1],reverse=True )
 		ab_species,ab_true,ab_adjusted = zip(*ab_filter)
 
+		lanthpy.plot_setup_pre("Graph of true {1}-level abundances in {0} \
+			(blue = est, green = true)".format(expname,tier),
+			xlabel = ab_species, xticks = range(0,xmax), xrotation = -90)
+
+		'''
 		pyp.title("Graph of true {1}-level abundances in {0} (blue = est, green = true)".format(expname,tier))
 		#pyp.xticks(range(0,xmax,2),[ab_species[i] for i in range(0,xmax,2)],rotation=-90)
 		pyp.xticks(range(0,xmax),ab_species,rotation=-90)
+		'''
 		pyp.plot(x,ab_true, color='green')
 		pyp.plot(x,ab_adjusted, color='blue')
 		pyp.subplots_adjust(bottom=.5)
@@ -219,15 +225,13 @@ def graph_error(true_species,true_abundance,est_species,est_abundance,adjusted_a
 		all_filter.sort( key=lambda x: x[1],reverse=True )
 		fil_sp,fil_true,fil_est = zip(*all_filter)
 
-		pyp.title("Graph of all above-average estimated abundances in {0} at {1}-level (blue = est, green = true)".format(expname,tier))
-		pyp.xticks(range(0,xmax),fil_sp,rotation=-90)
-		pyp.plot(x,fil_true, color='green')
-		pyp.plot(x,fil_est, color='blue')
-		pyp.subplots_adjust(bottom=.5)
-		pyp.savefig(expname +'_'+ tier +'_sigabundances.png')
-		if showgraphs:
-			pyp.show()
-		pyp.clf()
+		lanthpy.plot_setup_pre(
+			"Graph of all above-average estimated abundances in {0} at {1}-level"
+			.format(expname,tier), xlabels = fil_sp, xticks = range(0,xmax),
+			xrotation = -90)
+		lanthpy.plot(x, fil_true, color='green', label="True")
+		lanthpy.plot(x, fil_est, color='blue', label="Estimated")
+		lanthpy.plot_setup_post(save_file = expname +'_'+ tier +'_sigabundances.png')
 
 		# sort based on name
 		all_filter = zip(present_sp,present_true,present_est)
@@ -301,13 +305,16 @@ def main(argv=sys.argv):
 	est_species,est_abundance,est_counts,est_species_alone,est_species_ab,est_genus_alone,est_genus_ab = process_input(filename,true_size)
 
 	print "Strain-level error:"
-	diff,adjusted_abundance = calc_error(true_species,true_abundance,est_species,est_abundance)
-	graph_error(true_species,true_abundance,est_species,est_abundance,adjusted_abundance,diff,exp_name,'strain')
-	print "Species-level error:"
-	diff,adjusted_abundance = calc_error(true_species_alone,true_species_ab,est_species_alone,est_species_ab)
+	diff, adjusted_abundance = calc_error(true_species, true_abundance,
+		est_species, est_abundance)
+	graph_error(true_species, true_abundance, est_species, est_abundance,
+		adjusted_abundance, diff, exp_name, 'strain')
+
+#	print "Species-level error:"
+#	diff,adjusted_abundance = calc_error(true_species_alone,true_species_ab,est_species_alone,est_species_ab)
 #	graph_error(true_species_alone,true_species_ab,est_species_alone,est_species_ab,adjusted_abundance,diff,exp_name,'species')
-	print "Genus-level error:"
-	diff,adjusted_abundance = calc_error(true_genus_alone,true_genus_ab,est_genus_alone,est_genus_ab)
+#	print "Genus-level error:"
+#	diff,adjusted_abundance = calc_error(true_genus_alone,true_genus_ab,est_genus_alone,est_genus_ab)
 #	graph_error(true_genus_alone,true_genus_ab,est_genus_alone,est_genus_ab,adjusted_abundance,diff,exp_name,'genus')
 
 
