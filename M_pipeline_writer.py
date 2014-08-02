@@ -34,18 +34,23 @@ def missing_file(filename):
 	if use_existing_files and os.path.exists(filename):
 		return False
 	else:
-		return True # consider adding lines to the shell script to delete files that will be regenerated
+		return True
+		# consider adding lines to the shell script to delete files that will
+		# be regenerated
 
 def insert_suffix(filename,suffix,extension=""):
+	""" Insert a string into a filename, and/or change the file extension """
 	if extension:
-		return filename.rpartition('.')[0] + suffix +"."+ extension
+		return "{0}{1}.{2}".format(filename.rpartition('.')[0], suffix,
+									extension)
 	else:
-		return filename.rpartition('.')[0] + suffix +"."+ filename.rpartition('.')[2]
+		return "{0}{1}.{2}".format(filename.rpartition('.')[0], suffix,
+									filename.rpartition('.')[2])
 
 def main():
 	# Filename constants
 	test_basename = 'testM'
-	express_outputname = 'testM2' # because sometimes the express run is the only difference
+	express_outputname = 'testM2' # for keeping track of different express runs
 	version = '1.3'
 	cores = 40
 	raw_fasta_file = 'Martin_etal_TextS3_13Dec2011.fasta'
@@ -57,12 +62,14 @@ def main():
 	express_f = 0.95
 
 	script = open("M_pipeline_{0}.sh".format(express_outputname),'w')
-	script.write("# Version {0} -- used for {1}\n".format(version,express_outputname))
+	script.write("# Version {0} -- used for {1}\n"
+				.format(version,express_outputname))
 
 	# Removes pound sign from fasta file
 	cleaned_fasta_file = insert_suffix(raw_fasta_file, '_poundless') # Martin_etal_TextS3_13Dec2011_poundless.fasta
 	if missing_file(cleaned_fasta_file):
-		script.write('cat {0} | tr -d \\# > {1}\n&& '.format(raw_fasta_file,cleaned_fasta_file))
+		script.write('cat {0} | tr -d \\# > {1}\n&& '
+					.format(raw_fasta_file,cleaned_fasta_file))
 
 	# Sorts fasta by name of genome
 	sorted_fasta_file = insert_suffix(raw_fasta_file, '_sorted') # Martin_etal_TextS3_13Dec2011_sorted.fasta
@@ -76,7 +83,8 @@ def main():
 	              insert_suffix(sorted_fasta_file,'_genomes_2','mfa'),
 	              insert_suffix(sorted_fasta_file,'_plasmids_0','mfa')] # Martin_etal_TextS3_13Dec2011_sorted_genomes_0.mfa
 	if any(( [missing_file(f) for f in all_fastas] )):
-		script.write('python ~/tools/M_process_metagenome_reference.py {0} \\\n&& '.format(sorted_fasta_file))
+		script.write('python ~/tools/M_process_metagenome_reference.py {0} \\\n&& '
+					.format(sorted_fasta_file))
 
 	# Builds bowtie2 indexes
 	for fasta in all_fastas: # Martin_etal_TextS3_13Dec2011_sorted_genomes_1.1.bt2
@@ -117,12 +125,13 @@ def main():
 		             .format(i100_fasta," ".join([f for f in all_fastas]),merged_all_fastas))
 
 	# Run express (assuming this will always be run)
-	script.write('express -f {0} -o{1} --max-indel-size 100 -B {2} {3} {4}\n&& '
+	script.write('express -f {0} -o {1} --max-indel-size 100 -B {2} {3} {4}\\\n&& ' #apparently the space after -o works now
 	             .format(express_f,express_outputname,express_cycles,merged_all_fastas,sorted_bam_file))
 
 	# Rename express output and move to parent directory
-	script.write('mv {0}/results.xprs {0}_results.xprs\n&& '.format(express_outputname)) # testL2_results.xprs
+	script.write('mv {0}/results.xprs {0}_results.xprs\\\n&& '.format(express_outputname)) # testL2_results.xprs
 	script.write('mv {0}/params.xprs {0}_params.xprs'.format(express_outputname)) # testL2_params.xprs
+
 
 if __name__ == '__main__':
 	main()
