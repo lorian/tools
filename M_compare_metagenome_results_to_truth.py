@@ -6,7 +6,6 @@ import numpy as np
 import string
 import matplotlib
 #import matplotlib.pyplot as pyp <- this is in a function so it can be run on non-graphical systems
-from pylab import *
 import math
 import pickle
 import lanthpy
