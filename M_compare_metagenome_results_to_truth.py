@@ -5,7 +5,6 @@ import csv
 import numpy as np
 import string
 import matplotlib
-#import matplotlib.pyplot as pyp <- this is in a function so it can be run on non-graphical systems
 import math
 import pickle
 import lanthpy
@@ -155,6 +154,7 @@ def calc_error(true_species,true_abundance,est_species,est_abundance):
 def graph_error(true_species, true_abundance, est_species, est_abundance,
 				adjusted_abundance, diff, expname, tier, showgraphs=False):
 	import matplotlib.pyplot as pyp
+	import lanthplot # here so script can run on server w/out graphics
 
 	true_sp = [x.replace('_',' ') for x in true_species]
 	all_species = list(set(est_species + true_species))
