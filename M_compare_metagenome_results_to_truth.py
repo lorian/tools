@@ -5,7 +5,7 @@ import csv
 import numpy as np
 import string
 import matplotlib
-import matplotlib.pyplot as pyp
+#import matplotlib.pyplot as pyp <- this is in a function so it can be run on non-graphical systems
 from pylab import *
 import math
 import pickle
@@ -155,6 +155,8 @@ def calc_error(true_species,true_abundance,est_species,est_abundance):
 
 def graph_error(true_species, true_abundance, est_species, est_abundance,
 				adjusted_abundance, diff, expname, tier, showgraphs=False):
+	import matplotlib.pyplot as pyp
+
 	true_sp = [x.replace('_',' ') for x in true_species]
 	all_species = list(set(est_species + true_species))
 
@@ -305,7 +307,8 @@ def main(argv=sys.argv):
 	filename = argv[1]
 	exp_name = filename.rpartition('_')[0] # will be used for graph-naming purposes
 	dataset = argv[2] #i100 or simLC
-	if 3 in argv and (argv[3].lower() == 'false' or argv[3].lower() == 'f'):
+
+	if len(argv) > 3 and (argv[3].lower() == 'false' or argv[3].lower() == 'f'):
 		show_graphs = False
 	else:
 		show_graphs = True
