@@ -1,26 +1,5 @@
 """
 Takes file names and parameters and what's known about existing files and writes a full pipeline shell script
-
-Format of script:
-# Version 1.2 -- used for testL
-cat Martin_etal_TextS3_13Dec2011.fasta | tr -d \# > Martin_etal_TextS3_13Dec2011_poundless.fasta
-&& sed -e '/>/s/^/@/' -e '/>/s/$/#/' Martin_etal_TextS3_13Dec2011_poundless.fasta | tr -d "\n" | tr "@" "\n" | sort -t "|" -k1n | tr "#" "\n" | sed -e '/^$/d' > Martin_etal_TextS3_13Dec2011_poundless.fasta \
-&& python ~/tools/M_process_metagenome_reference.py Martin_etal_TextS3_13Dec2011_sorted.fasta \
-&& bowtie2-build Martin_etal_TextS3_13Dec2011_sorted_genomes_0.mfa Martin_etal_TextS3_13Dec2011_sorted_genomes_0 \
-&& bowtie2-build Martin_etal_TextS3_13Dec2011_sorted_genomes_1.mfa Martin_etal_TextS3_13Dec2011_sorted_genomes_1 \
-&& bowtie2-build Martin_etal_TextS3_13Dec2011_sorted_genomes_2.mfa Martin_etal_TextS3_13Dec2011_sorted_genomes_2 \
-&& bowtie2-build Martin_etal_TextS3_13Dec2011_sorted_plasmids_0.mfa Martin_etal_TextS3_13Dec2011_sorted_plasmids_0 \
-&& bowtie2 -a -t -p 40 --local -x Martin_etal_TextS3_13Dec2011_sorted_genomes_0 -1 illumina_100species.1.fq -2 illumina_100species.2.fq -S testL_g0.SAM \
-&& bowtie2 -a -t -p 40 --local -x Martin_etal_TextS3_13Dec2011_sorted_genomes_1 -1 illumina_100species.1.fq -2 illumina_100species.2.fq -S testL_g1.SAM \
-&& bowtie2 -a -t -p 40 --local -x Martin_etal_TextS3_13Dec2011_sorted_genomes_2 -1 illumina_100species.1.fq -2 illumina_100species.2.fq -S testL_g2.SAM \
-&& bowtie2 -a -t -p 40 --local -x Martin_etal_TextS3_13Dec2011_sorted_plasmids_0 -1 illumina_100species.1.fq -2 illumina_100species.2.fq -S testL_p.SAM \
-&& python ~/tools/M_merge_sam_files.py testL_g0.SAM testL_g1.SAM testL_g2.SAM testL_p.SAM testJ.SAM \
-&& mv combined_file.sam testL_J.SAM \
-&& samtools view -bhS testL_J.SAM > testL_J.bam \
-&& ulimit -n 5000 \
-&& samtools sort -n testL_J.bam testL_J_sorted \
-&& cat illumina_100genomes.mfa Martin_etal_TextS3_13Dec2011_sorted_genomes_0.mfa Martin_etal_TextS3_13Dec2011_sorted_genomes_1.mfa Martin_etal_TextS3_13Dec2011_sorted_genomes_2.mfa Martin_etal_TextS3_13Dec2011_sorted_plasmids_0.mfa > Martin_etal_TextS3_13Dec2011_sorted_i100.fasta \
-&& express -f 0.85 --max-indel-size 100 -B 20 Martin_etal_TextS3_13Dec2011_sorted_i100.fasta testL_J_sorted.bam
 """
 # Todo: check that express directory is empty and delete it
 	# parameterize some of the variables like test name
@@ -49,42 +28,46 @@ def insert_suffix(filename,suffix,extension=""):
 
 def main():
 	# Filename constants
-	test_basename = 'testM'
-	express_outputname = 'testM2' # for keeping track of different express runs
-	version = '1.3'
+	test_basename = 'testI'
+	express_outputname = 'testI4' # for keeping track of different express runs
+	version = '1.4'
 	cores = 40
-	raw_fasta_file = 'Martin_etal_TextS3_13Dec2011.fasta'
+	raw_fasta_file = 'Martin_etal_TextS3_13Dec2011_original_un.fasta'
 	fastq_file_r1 = "illumina_100species.1.fq.gz"
 	fastq_file_r2 = "illumina_100species.2.fq.gz"
 	i100_alignment = 'testE.SAM'
 	i100_fasta = 'illumina_100genomes.mfa'
-	express_cycles = 50
-	express_f = 0.95
+	express_cycles = 20
+	express_f = 0.85
 
 	script = open("M_pipeline_{0}.sh".format(express_outputname),'w')
 	script.write("# Version {0} -- used for {1}\n"
 				.format(version,express_outputname))
 
-	# Removes pound sign from fasta file
-	cleaned_fasta_file = insert_suffix(raw_fasta_file, '_poundless') # Martin_etal_TextS3_13Dec2011_poundless.fasta
-	if missing_file(cleaned_fasta_file):
-		script.write('cat {0} | tr -d \\# > {1}\n&& '
-					.format(raw_fasta_file,cleaned_fasta_file))
-
-	# Sorts fasta by name of genome
+	# Looks for bowtie-sized chunks for indexing
 	sorted_fasta_file = insert_suffix(raw_fasta_file, '_sorted') # Martin_etal_TextS3_13Dec2011_sorted.fasta
-	if missing_file(sorted_fasta_file):
-		script.write('sed -e \'/>/s/^/@/\' -e \'/>/s/$/#/\' {0} | tr -d "\\n" | tr "@" "\\n" | sort -t "|" -k1n | tr "#" "\\n" | sed -e \'/^$/d\' > {0} \\\n&& '
-		             .format(cleaned_fasta_file,sorted_fasta_file))
-
-	# Breaks fasta into bowtie-sized chunks for indexing
 	all_fastas = [insert_suffix(sorted_fasta_file,'_genomes_0','mfa'),
-	              insert_suffix(sorted_fasta_file,'_genomes_1','mfa'),
-	              insert_suffix(sorted_fasta_file,'_genomes_2','mfa'),
-	              insert_suffix(sorted_fasta_file,'_plasmids_0','mfa')] # Martin_etal_TextS3_13Dec2011_sorted_genomes_0.mfa
+					insert_suffix(sorted_fasta_file,'_genomes_1','mfa'),
+					insert_suffix(sorted_fasta_file,'_genomes_2','mfa'),
+					insert_suffix(sorted_fasta_file,'_plasmids_0','mfa')] # Martin_etal_TextS3_13Dec2011_sorted_genomes_0.mfa
 	if any(( [missing_file(f) for f in all_fastas] )):
-		script.write('python ~/tools/M_process_metagenome_reference.py {0} \\\n&& '
-					.format(sorted_fasta_file))
+		# Go through entire fasta creation process
+
+		# Removes pound sign from fasta file
+		cleaned_fasta_file = insert_suffix(raw_fasta_file, '_poundless') # Martin_etal_TextS3_13Dec2011_poundless.fasta
+		if missing_file(cleaned_fasta_file):
+			script.write('cat {0} | tr -d \\# > {1}\n&& '
+						.format(raw_fasta_file,cleaned_fasta_file))
+
+		# Sorts fasta by name of genome
+		if missing_file(sorted_fasta_file):
+			script.write('sed -e \'/>/s/^/@/\' -e \'/>/s/$/#/\' {0} | tr -d "\\n" | tr "@" "\\n" | sort -t "|" -k1n | tr "#" "\\n" | sed -e \'/^$/d\' > {0} \\\n&& '
+						.format(cleaned_fasta_file,sorted_fasta_file))
+
+		# Breaks fasta into bowtie-sized chunks for indexing
+		if any(( [missing_file(f) for f in all_fastas] )):
+			script.write('python ~/tools/M_process_metagenome_reference.py {0} \\\n&& '
+						.format(sorted_fasta_file))
 
 	# Builds bowtie2 indexes
 	for fasta in all_fastas: # Martin_etal_TextS3_13Dec2011_sorted_genomes_1.1.bt2
