@@ -297,25 +297,42 @@ def graph_error(true_species, true_abundance, est_species, est_abundance,
 	return
 
 def main(argv=sys.argv):
+	"""
+	Command line usage: python M_compare_metagenomic_results_to_truth.py
+						[filename] [dataset] <show graphs? (defaults to true)>
+	"""
+
 	filename = argv[1]
 	exp_name = filename.rpartition('_')[0] # will be used for graph-naming purposes
 	dataset = argv[2] #i100 or simLC
+	if 3 in argv and (argv[3].lower() == 'false' or argv[3].lower() == 'f'):
+		show_graphs = False
+	else:
+		show_graphs = True
 
 	true_species,true_abundance,true_counts,true_size,true_species_alone,true_species_ab,true_genus_alone,true_genus_ab = dataset_truth(dataset)
 	est_species,est_abundance,est_counts,est_species_alone,est_species_ab,est_genus_alone,est_genus_ab = process_input(filename,true_size)
 
 	print "Strain-level error:"
 	diff, adjusted_abundance = calc_error(true_species, true_abundance,
-		est_species, est_abundance)
-	graph_error(true_species, true_abundance, est_species, est_abundance,
-		adjusted_abundance, diff, exp_name, 'strain')
+											est_species, est_abundance)
+	if show_graphs:
+		graph_error(true_species, true_abundance, est_species, est_abundance,
+					adjusted_abundance, diff, exp_name, 'strain')
 
-#	print "Species-level error:"
-#	diff,adjusted_abundance = calc_error(true_species_alone,true_species_ab,est_species_alone,est_species_ab)
-#	graph_error(true_species_alone,true_species_ab,est_species_alone,est_species_ab,adjusted_abundance,diff,exp_name,'species')
-#	print "Genus-level error:"
-#	diff,adjusted_abundance = calc_error(true_genus_alone,true_genus_ab,est_genus_alone,est_genus_ab)
-#	graph_error(true_genus_alone,true_genus_ab,est_genus_alone,est_genus_ab,adjusted_abundance,diff,exp_name,'genus')
+	print "Species-level error:"
+	diff, adjusted_abundance = calc_error(true_species_alone, true_species_ab,
+											est_species_alone, est_species_ab)
+	if show_graphs:
+		graph_error(true_species_alone, true_species_ab, est_species_alone,
+					est_species_ab, adjusted_abundance, diff, exp_name, 'species')
+
+	print "Genus-level error:"
+	diff, adjusted_abundance = calc_error(true_genus_alone, true_genus_ab,
+											est_genus_alone, est_genus_ab)
+	if show_graphs:
+		graph_error(true_genus_alone, true_genus_ab, est_genus_alone,
+					est_genus_ab, adjusted_abundance, diff, exp_name,'genus')
 
 
 if __name__ == "__main__":
