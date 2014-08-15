@@ -22,7 +22,7 @@ def missing_file(filename):
 
 
 def missing_sam_and_bam(sam_filename):
-	bam_filename = insert_suffix(sam_filename,, 'bam')
+	bam_filename = insert_suffix(sam_filename, "", 'bam')
 	if missing_file(sam_filename) and missing_file(bam_filename):
 		return True
 	else:
@@ -40,10 +40,9 @@ def insert_suffix(filename,suffix,extension=""):
 
 
 def convert_bam_to_sam(sam_filename):
-	bam_filename = insert_suffix(sam_filename,, 'bam')
-	print bam_filename
+	bam_filename = insert_suffix(sam_filename, "", 'bam')
 	if missing_file(sam_filename) and not missing_file(bam_filename):
-		return 'samtools view -hSb {0} > {1}'.format(bam_filename,sam_filename)
+		return 'samtools view -hSb {0} > {1} \\\n&& '.format(bam_filename,sam_filename)
 	else:
 		return False
 
@@ -111,8 +110,7 @@ def main():
 						fastq_file_r2, test_basename + all_suffixes[i]))
 
 	# Merge sam files
-	merged_sam_file = "{0}_{1}"
-			.format(test_basename,i100_alignment.rpartition("test")[2]) # testL_J.SAM
+	merged_sam_file = "{0}_{1}".format(test_basename, i100_alignment.rpartition("test")[2]) # testL_J.SAM
 	if missing_sam_and_bam(merged_sam_file):
 
 		# convert any bams into sams for merge
@@ -128,27 +126,26 @@ def main():
 		script.write('mv combined_file.sam {0} \\\n&& '.format(merged_sam_file))
 
 	# Convert to bam
-	bam_file = insert_suffix(merged_sam_file,"","bam") # testL_J.bam
-	if missing_file(bam_file):
-		script.write('samtools view -bhS {0} > {1} \\\n&& '
-					.format(merged_sam_file,bam_file))
+	if convert_bam_to_sam(merged_sam_file):
+		script.write(convert_bam_to_sam(merged_sam_file))
 
 	# Sort
-	sorted_bam_file = insert_suffix(bam_file,"_sorted") # testL_J_sorted.bam
+	bam_file = insert_suffix(merged_sam_file, "", "bam") # testL_J.bam
+	sorted_bam_file = insert_suffix(bam_file, "_sorted") # testL_J_sorted.bam
 	if missing_file(sorted_bam_file):
 		script.write('ulimit -n 5000 \\\n&& ')
 		script.write('samtools sort -n {0} {1} \\\n&& '
-					.format(bam_file,sorted_bam_file.rpartition(".")[0]))
+					.format(bam_file, sorted_bam_file.rpartition(".")[0]))
 
 	# Combine all mfa files used
-	merged_all_fastas = insert_suffix(sorted_fasta_file,"_i100","mfa") # Martin_etal_TextS3_13Dec2011_sorted_i100.mfa
+	merged_all_fastas = insert_suffix(sorted_fasta_file, "_i100", "mfa") # Martin_etal_TextS3_13Dec2011_sorted_i100.mfa
 	if missing_file(merged_all_fastas):
 		script.write('cat {0} {1} > {2} \\\n&& '
-					.format(i100_fasta," ".join([f for f in all_fastas]),merged_all_fastas))
+					.format(i100_fasta, " ".join([f for f in all_fastas]), merged_all_fastas))
 
 	# Run express (assuming this will always be run)
 	script.write('express -f {0} -o {1} --max-indel-size 100 -B {2} {3} {4} \\\n&& ' #apparently the space after -o works now
-				.format(express_f,express_outputname,express_cycles,merged_all_fastas,sorted_bam_file))
+				.format(express_f, express_outputname, express_cycles, merged_all_fastas, sorted_bam_file))
 
 	# Rename express output and move to parent directory
 	script.write('mv {0}/results.xprs {0}_results.xprs \\\n&& '
