@@ -42,7 +42,7 @@ def insert_suffix(filename,suffix,extension=""):
 def convert_bam_to_sam(sam_filename):
 	bam_filename = insert_suffix(sam_filename, "", 'bam')
 	if missing_file(sam_filename) and not missing_file(bam_filename):
-		return 'samtools view -hSb {0} > {1} \\\n&& '.format(bam_filename,sam_filename)
+		return 'samtools view -h {0} > {1} \\\n&& '.format(bam_filename,sam_filename)
 	else:
 		return False
 
@@ -126,11 +126,11 @@ def main():
 		script.write('mv combined_file.sam {0} \\\n&& '.format(merged_sam_file))
 
 	# Convert to bam
-	if convert_bam_to_sam(merged_sam_file):
-		script.write(convert_bam_to_sam(merged_sam_file))
+	bam_file = insert_suffix(merged_sam_file,"","bam") # testL_J.bam
+	if missing_file(bam_file):
+		script.write('samtools view -bhS {0} > {1} \\\n&& '.format(merged_sam_file,bam_file))
 
 	# Sort
-	bam_file = insert_suffix(merged_sam_file, "", "bam") # testL_J.bam
 	sorted_bam_file = insert_suffix(bam_file, "_sorted") # testL_J_sorted.bam
 	if missing_file(sorted_bam_file):
 		script.write('ulimit -n 5000 \\\n&& ')
