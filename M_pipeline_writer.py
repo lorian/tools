@@ -4,10 +4,13 @@ Takes file names and parameters and what's known about existing files and writes
 # Todo: check that express directory is empty and delete it
 	# parameterize some of the variables like test name
 	# either merge files in a subdirectory or make a variable name to avoid conflicts
+	# delete combined_header.txt
+	# delete justbody files
 
 import os
 
 use_existing_files = True
+
 
 def missing_file(filename):
 	if use_existing_files and os.path.exists(filename):
@@ -16,6 +19,15 @@ def missing_file(filename):
 		return True
 		# consider adding lines to the shell script to delete files that will
 		# be regenerated
+
+
+def missing_sam_and_bam(sam_filename):
+	bam_filename = insert_suffix(sam_filename,, 'bam')
+	if missing_file(sam_filename) and missing_file(bam_filename):
+		return True
+	else:
+		return False
+
 
 def insert_suffix(filename,suffix,extension=""):
 	""" Insert a string into a filename, and/or change the file extension """
@@ -26,8 +38,18 @@ def insert_suffix(filename,suffix,extension=""):
 		return "{0}{1}.{2}".format(filename.rpartition('.')[0], suffix,
 									filename.rpartition('.')[2])
 
+
+def convert_bam_to_sam(sam_filename):
+	bam_filename = insert_suffix(sam_filename,, 'bam')
+	print bam_filename
+	if missing_file(sam_filename) and not missing_file(bam_filename):
+		return 'samtools view -hSb {0} > {1}'.format(bam_filename,sam_filename)
+	else:
+		return False
+
+
 def main():
-	# Filename constants
+	# Filename constants (convert this into a parameter file)
 	test_basename = 'testI'
 	express_outputname = 'testI4' # for keeping track of different express runs
 	version = '1.4'
@@ -71,49 +93,68 @@ def main():
 
 	# Builds bowtie2 indexes
 	for fasta in all_fastas: # Martin_etal_TextS3_13Dec2011_sorted_genomes_1.1.bt2
-		if any(( missing_file(insert_suffix(fasta,"","1.bt2")), missing_file(insert_suffix(fasta,"","2.bt2")),
-		         missing_file(insert_suffix(fasta,"","3.bt2")), missing_file(insert_suffix(fasta,"","4.bt2")),
-		         missing_file(insert_suffix(fasta,"","rev.1.bt2")), missing_file(insert_suffix(fasta,"","rev.2.bt2")) )):
-			script.write('bowtie2-build {0} {1} \\\n&& '.format(fasta,fasta.rpartition(".")[0]))
+		if any((missing_file(insert_suffix(fasta, "", "1.bt2")),
+				missing_file(insert_suffix(fasta, "", "2.bt2")),
+				missing_file(insert_suffix(fasta, "", "3.bt2")),
+				missing_file(insert_suffix(fasta, "", "4.bt2")),
+				missing_file(insert_suffix(fasta, "", "rev.1.bt2")),
+				missing_file(insert_suffix(fasta, "", "rev.2.bt2")))):
+			script.write('bowtie2-build {0} {1} \\\n&& '
+						.format(fasta, fasta.rpartition(".")[0]))
 
 	# Run bowtie2
 	all_suffixes = ['_g0', '_g1', '_g2', '_p'] # testL_g0.SAM
 	for i,fasta in enumerate(all_fastas):
-		if missing_file(test_basename + all_suffixes[i] + ".SAM"):
+		if missing_sam_and_bam(test_basename + all_suffixes[i] + ".SAM"):
 			script.write('bowtie2 -a -t -p {0} --local -x {1} -1 {2} -2 {3} -S {4}.SAM \\\n&& '
-		                 .format(cores,fasta.rpartition(".")[0],fastq_file_r1,fastq_file_r2,test_basename + all_suffixes[i]))
+						.format(cores, fasta.rpartition(".")[0], fastq_file_r1,
+						fastq_file_r2, test_basename + all_suffixes[i]))
 
 	# Merge sam files
-	merged_sam_file = "{0}_{1}".format(test_basename,i100_alignment.rpartition("test")[2]) # testL_J.SAM
-	if missing_file(merged_sam_file):
+	merged_sam_file = "{0}_{1}"
+			.format(test_basename,i100_alignment.rpartition("test")[2]) # testL_J.SAM
+	if missing_sam_and_bam(merged_sam_file):
+
+		# convert any bams into sams for merge
+		if convert_bam_to_sam(i100_alignment):
+			script.write(convert_bam_to_sam(i100_alignment))
+		for i,fasta in enumerate(all_fastas):
+			if convert_bam_to_sam(test_basename + all_suffixes[i] + ".SAM"):
+				script.write(convert_bam_to_sam(test_basename + all_suffixes[i] + ".SAM"))
+
+		# Merge sams
 		script.write('python ~/tools/M_merge_sam_files.py {0} {1} \\\n&& '
-		             .format(" ".join([test_basename + s + '.SAM' for s in all_suffixes]),i100_alignment))
+					.format(" ".join([test_basename + s + '.SAM' for s in all_suffixes]),i100_alignment))
 		script.write('mv combined_file.sam {0} \\\n&& '.format(merged_sam_file))
 
 	# Convert to bam
 	bam_file = insert_suffix(merged_sam_file,"","bam") # testL_J.bam
 	if missing_file(bam_file):
-		script.write('samtools view -bhS {0} > {1} \\\n&& '.format(merged_sam_file,bam_file))
+		script.write('samtools view -bhS {0} > {1} \\\n&& '
+					.format(merged_sam_file,bam_file))
 
 	# Sort
 	sorted_bam_file = insert_suffix(bam_file,"_sorted") # testL_J_sorted.bam
 	if missing_file(sorted_bam_file):
 		script.write('ulimit -n 5000 \\\n&& ')
-		script.write('samtools sort -n {0} {1} \\\n&& '.format(bam_file,sorted_bam_file.rpartition(".")[0]))
+		script.write('samtools sort -n {0} {1} \\\n&& '
+					.format(bam_file,sorted_bam_file.rpartition(".")[0]))
 
 	# Combine all mfa files used
 	merged_all_fastas = insert_suffix(sorted_fasta_file,"_i100","mfa") # Martin_etal_TextS3_13Dec2011_sorted_i100.mfa
 	if missing_file(merged_all_fastas):
 		script.write('cat {0} {1} > {2} \\\n&& '
-		             .format(i100_fasta," ".join([f for f in all_fastas]),merged_all_fastas))
+					.format(i100_fasta," ".join([f for f in all_fastas]),merged_all_fastas))
 
 	# Run express (assuming this will always be run)
 	script.write('express -f {0} -o {1} --max-indel-size 100 -B {2} {3} {4} \\\n&& ' #apparently the space after -o works now
-	             .format(express_f,express_outputname,express_cycles,merged_all_fastas,sorted_bam_file))
+				.format(express_f,express_outputname,express_cycles,merged_all_fastas,sorted_bam_file))
 
 	# Rename express output and move to parent directory
-	script.write('mv {0}/results.xprs {0}_results.xprs \\\n&& '.format(express_outputname)) # testL2_results.xprs
-	script.write('mv {0}/params.xprs {0}_params.xprs'.format(express_outputname)) # testL2_params.xprs
+	script.write('mv {0}/results.xprs {0}_results.xprs \\\n&& '
+				.format(express_outputname)) # testL2_results.xprs
+	script.write('mv {0}/params.xprs {0}_params.xprs'
+				.format(express_outputname)) # testL2_params.xprs
 
 
 if __name__ == '__main__':
