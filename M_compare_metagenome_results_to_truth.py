@@ -91,7 +91,7 @@ def process_input(filename,size):
 	with open('non-zero_abundances.txt','w') as f:
 		for i,species in enumerate(set_species):
 			if set_abundance[i] != 0:
-				f.write(species+'\n')
+				f.write('{0}\t{1}\n'.format(species,set_abundance))
 
 	est_species_alone, est_species_ab, est_genus_alone, est_genus_ab = collapse_strains(set_species,set_abundance)
 	return list(set_species),set_abundance,set_counts,est_species_alone,est_species_ab,est_genus_alone,est_genus_ab
