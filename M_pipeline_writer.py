@@ -2,7 +2,7 @@
 Takes file names and parameters and what's known about existing files and writes a full pipeline shell script
 """
 # Todo: check that express directory is empty and delete it
-	# parameterize some of the variables like test name
+	# make all variables into a parameter file
 	# either merge files in a subdirectory or make a variable name to avoid conflicts
 	# delete combined_header.txt
 	# delete justbody files
@@ -50,7 +50,7 @@ def convert_bam_to_sam(sam_filename):
 def main():
 	# Filename constants (convert this into a parameter file)
 	test_basename = 'testI'
-	express_outputname = 'testI4' # for keeping track of different express runs
+	express_outputname = 'testI5' # for keeping track of different express runs
 	version = '1.4'
 	cores = 40
 	raw_fasta_file = 'Martin_etal_TextS3_13Dec2011_original_un.fasta'
