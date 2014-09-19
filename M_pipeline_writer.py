@@ -56,10 +56,11 @@ def main():
 	raw_fasta_file = 'Martin_etal_TextS3_13Dec2011_poundless_fragmented.fasta'
 	fastq_file_r1 = "illumina_100species.1.fq.gz"
 	fastq_file_r2 = "illumina_100species.2.fq.gz"
-	i100_alignment = 'testN_i100.SAM'
+	i100_alignment = 'testNi100.SAM'
 	i100_fasta = 'illumina_100genomes_fragmented_genomes_0.mfa'
 	express_cycles = 20
 	express_f = 0.85
+	nice = True # add in hooks for this
 
 	script = open("M_pipeline_{0}.sh".format(express_outputname),'w')
 	script.write("# Version {0} -- used for {1}\n"
@@ -106,7 +107,7 @@ def main():
 	all_suffixes = ['_g0', '_g1', '_g2', '_p'] # testL_g0.SAM
 	for i,fasta in enumerate(all_fastas):
 		if missing_sam_and_bam(test_basename + all_suffixes[i] + ".SAM"):
-			script.write('bowtie2 -a -t -p {0} --local -x {1} -1 {2} -2 {3} -S {4}.SAM \\\n&& '
+			script.write('nice -n 19 bowtie2 -a -t -p {0} --local -x {1} -1 {2} -2 {3} -S {4}.SAM \\\n&& '
 						.format(cores, fasta.rpartition(".")[0], fastq_file_r1,
 						fastq_file_r2, test_basename + all_suffixes[i]))
 
@@ -120,6 +121,20 @@ def main():
 		for i,fasta in enumerate(all_fastas):
 			if convert_bam_to_sam(test_basename + all_suffixes[i] + ".SAM"):
 				script.write(convert_bam_to_sam(test_basename + all_suffixes[i] + ".SAM"))
+
+		# create i100 alignment if it doesn't exist
+		if missing_file(i100_alignment):
+			if any((missing_file(insert_suffix(i100_fasta, "", "1.bt2")),
+					missing_file(insert_suffix(i100_fasta, "", "2.bt2")),
+					missing_file(insert_suffix(i100_fasta, "", "3.bt2")),
+					missing_file(insert_suffix(i100_fasta, "", "4.bt2")),
+					missing_file(insert_suffix(i100_fasta, "", "rev.1.bt2")),
+					missing_file(insert_suffix(i100_fasta, "", "rev.2.bt2")))):
+				script.write('bowtie2-build {0} {1} \\\n&& '
+						.format(i100_fasta, i100_fasta.rpartition(".")[0]))
+			script.write('nice -n 19 bowtie2 -a -t -p {0} --local -x {1} -1 {2} -2 {3} -S {4} \\\n&& '
+					.format(cores, i100_fasta.rpartition(".")[0], fastq_file_r1,
+					fastq_file_r2, i100_alignment))
 
 		# Merge sams
 		script.write('python ~/tools/M_merge_sam_files.py {0} {1} \\\n&& '
