@@ -49,15 +49,15 @@ def convert_bam_to_sam(sam_filename):
 
 def main():
 	# Filename constants (convert this into a parameter file)
-	test_basename = 'testI'
-	express_outputname = 'testI5' # for keeping track of different express runs
+	test_basename = 'testN'
+	express_outputname = 'testN1' # for keeping track of different express runs
 	version = '1.4'
 	cores = 40
-	raw_fasta_file = 'Martin_etal_TextS3_13Dec2011_original_un.fasta'
+	raw_fasta_file = 'Martin_etal_TextS3_13Dec2011_poundless_fragmented.fasta'
 	fastq_file_r1 = "illumina_100species.1.fq.gz"
 	fastq_file_r2 = "illumina_100species.2.fq.gz"
-	i100_alignment = 'testE.SAM'
-	i100_fasta = 'illumina_100genomes.mfa'
+	i100_alignment = 'testN_i100.SAM'
+	i100_fasta = 'illumina_100genomes_fragmented_genomes_0.mfa'
 	express_cycles = 20
 	express_f = 0.85
 
@@ -66,7 +66,8 @@ def main():
 				.format(version,express_outputname))
 
 	# Looks for bowtie-sized chunks for indexing
-	sorted_fasta_file = insert_suffix(raw_fasta_file, '_sorted') # Martin_etal_TextS3_13Dec2011_sorted.fasta
+#	NOTE TEMP CHANGE HERE TO WORK WITH TEST N!
+	sorted_fasta_file = insert_suffix(raw_fasta_file, '') # Martin_etal_TextS3_13Dec2011_sorted.fasta
 	all_fastas = [insert_suffix(sorted_fasta_file,'_genomes_0','mfa'),
 					insert_suffix(sorted_fasta_file,'_genomes_1','mfa'),
 					insert_suffix(sorted_fasta_file,'_genomes_2','mfa'),
