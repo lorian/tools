@@ -13,7 +13,7 @@ for seq_record in SeqIO.parse(str(sys.argv[1]), "fasta"):
 	fasta_sizes[seq_record.id] = len(seq_record)
 
 # Format of sam header: @SQ, SN:<name>, LN:<length>
-sam_header = csv.reader(open('testE_head.sam','r'),delimiter='\t')
+sam_header = csv.reader(open(sys.argv[2],'r'),delimiter='\t')
 for row in sam_header:
 	if row[1][3:] not in fasta_sizes.keys():
 		print row
