@@ -53,7 +53,7 @@ def main():
 	express_outputname = 'testO1' # for keeping track of different express runs
 	version = '2.0'
 	cores = 40
-	raw_fasta_file = 'Martin_etal_TextS3_13Dec2011_i100.mfa'
+	raw_fasta_file = 'Martin_etal_TextS3_13Dec2011_original_un_sorted_i100.mfa'
 	fastq_file_r1 = "illumina_100species.1.fq.gz"
 	fastq_file_r2 = "illumina_100species.2.fq.gz"
 	express_cycles = 20
