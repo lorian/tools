@@ -49,8 +49,8 @@ def convert_bam_to_sam(sam_filename):
 
 def main():
 	# Filename constants (convert this into a parameter file)
-	test_basename = 'testJ'
-	express_outputname = 'testJ2' # for keeping track of different express runs
+	test_basename = 'testL'
+	express_outputname = 'testL2' # for keeping track of different express runs
 	version = '2.0'
 	cores = 40
 	raw_fasta_file = 'Martin_etal_TextS3_13Dec2011.fasta'
