@@ -39,7 +39,7 @@ def chop_genome(genome_sequence,species,IDEAL_FRAGMENT_SIZE):
 
 	chopped_lines = ""
 	for i in range(0,len(genome_sequence),fragment_size):
-		chopped_lines += species[:-1] + str(i) +'\n' + genome_sequence[i:i+fragment_size]+'\n'
+		chopped_lines += species[:-1] +'_'+ str(i) +'\n'+ genome_sequence[i:i+fragment_size] +'\n'
 
 	chopped_lines = chopped_lines.replace('\n\n','\n') # remove extraneous double newlines
 	return chopped_lines
