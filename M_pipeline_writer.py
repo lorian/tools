@@ -49,15 +49,15 @@ def convert_bam_to_sam(sam_filename):
 
 def main():
 	# Filename constants (convert this into a parameter file)
-	test_basename = 'testO'
-	express_outputname = 'testO1' # for keeping track of different express runs
+	test_basename = 'testJ'
+	express_outputname = 'testJ2' # for keeping track of different express runs
 	version = '2.0'
 	cores = 40
-	raw_fasta_file = 'Martin_etal_TextS3_13Dec2011_original_un_sorted_i100.mfa'
-	fastq_file_r1 = "illumina_100species.1.fq.gz"
-	fastq_file_r2 = "illumina_100species.2.fq.gz"
-	express_cycles = 20
-	express_f = 0.85
+	raw_fasta_file = 'Martin_etal_TextS3_13Dec2011.fasta'
+	fastq_file_r1 = "illumina_100species_trimmed.1.fq.gz"
+	fastq_file_r2 = "illumina_100species_trimmed.2.fq.gz"
+	express_cycles = 50
+	express_f = 0.95
 	nice = False # add in hooks for this
 
 	script = open("M_pipeline_{0}.sh".format(express_outputname),'w')
@@ -124,3 +124,4 @@ def main():
 
 if __name__ == '__main__':
 	main()
+
