@@ -13,7 +13,6 @@ def plot_setup_pre( title = None, xaxislabel = None, yaxislabel = None,
 	Sets up a figure with all the aspects that will remain constant over
 	multiple plots: labels and tick marks
 	"""
-	print "Running plot_setup_pre"
 
 	# Resizes graphs so the x labels fit on the screen
 	pylab.rcParams['figure.figsize'] = 20, 10
@@ -22,11 +21,11 @@ def plot_setup_pre( title = None, xaxislabel = None, yaxislabel = None,
 	pyp.figure(figure_number)
 
 	if title:
-		pyp.title(title)
+		pyp.title(title, fontsize='30')
 	if xaxislabel:
 		pyp.xlabel(xaxislabel)
 	if yaxislabel:
-		pyp.ylabel(yaxislabel)
+		pyp.ylabel(yaxislabel, fontsize='20')
 	if xticks:
 		pyp.xticks(xticks, (xlabels if xlabels else xticks),
 					rotation = xrotation)
@@ -42,7 +41,6 @@ def plot_generic(x_values, y_values, plot_func = pyp.plot, hold = True,
 	"""
 	Actual plotting function that passes arguments to the correct plot method.
 	"""
-	print "Running plot_generic"
 
 	if figure_number:
 		pyp.figure(figure_number)
@@ -101,6 +99,7 @@ def plot_setup_post(figure_number = None, show = True, save_file = None,
 		pyp.savefig(save_file)
 	if show:
 		pyp.show()
-	pyp.clf() # clears figure
+	else:
+		pyp.clf() # clears figure if not plotted
 
 
