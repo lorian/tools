@@ -15,7 +15,8 @@ np.set_printoptions(precision=4)
 rcParams['figure.figsize'] = 20, 10
 
 def collapse_strains(strains,abundance):
-	# Group strains together by species and genus
+	""" Group strains together by species and genus """
+
 	just_species = [s.partition(',')[0].split("_")[0]+"_"+s.partition(',')[0].split("_")[1]+","+s.partition(',')[2].split("_")[0]+"_"+s.partition(',')[2].split("_")[1] if s.find(',') > -1 else s.split("_")[0]+"_"+s.split("_")[1] for s in strains]
 	just_genus = [s.split("_")[0] for s in strains] # Note: ignores synonyms (probably safe)
 
@@ -36,7 +37,8 @@ def collapse_strains(strains,abundance):
 	return list(temp1),np.array(temp2),list(temp3),np.array(temp4)
 
 def process_input(filename,size):
-	# Pull species names, abundance, and counts out of input gasic or express file
+	""" Pull species names, abundance, and counts out of input gasic or express file """
+
 	suffix = filename.rpartition('.')[2] #xprs or txt file
 
 	input_file = open(filename,'r')
@@ -48,7 +50,7 @@ def process_input(filename,size):
 		input_species = zip(*input_data)[1] # express species names are in second column
 		input_counts = np.array([float(i) for i in zip(*input_data)[6]]) # used when dataset abundances are given in raw counts
 		fpkm = np.array([float(i) for i in zip(*input_data)[10]]) # used when dataset abundances are given as percentages
-		print "Number of entries before filtering: {0}".format(len(input_species))
+		print "Number of raw entries: {0}".format(len(input_species))
 		input_array = zip(input_species,fpkm,input_counts)
 		no_plasmids = [r for r in input_array if r[0].find('plasmid') == -1] # remove plasmids from list
 		input_species,fpkm,input_counts = zip(*no_plasmids)
@@ -67,7 +69,7 @@ def process_input(filename,size):
 
 	species = lanthpy.genome_name_cleanup(input_species)
 
-	# Sum duplicate species (stopgap fix!!)
+	# Sum duplicate species (stopgap fix for fasta problem)
 	dup_data = zip(species,input_abundance,input_counts)
 	set_ab = {}
 	set_co = {}
@@ -79,18 +81,22 @@ def process_input(filename,size):
 	set_abundance = [math.fsum(v) for k,v in set_ab.items()]
 	set_counts = [math.fsum(v) for k,v in set_co.items()]
 
+	print "Number of entries after combining duplicates: {0}".format(len(set_species))
+
 	# sort alphabetically by species
 	set_data = zip(set_species,set_abundance,set_counts)
-	set_data.sort(key=lambda x:x[0])
-	set_species,set_abundance,set_counts = zip(*set_data)
-	print "Number of entries after combining duplicates: {0}".format(len(set_species))
+	set_minimum = [r if r[1] > 0.001 else (r[0],0,r[2]) for r in set_data] # set very low estimated abundances to 0
+	set_minimum.sort(key=lambda x:x[0])
+	set_species,set_abundance,set_counts = zip(*set_minimum)
+
+	print "Number of non-zero abundances: {0}".format(len(set_abundance) - set_abundance.count(0))
 
 	est_species_alone, est_species_ab, est_genus_alone, est_genus_ab = collapse_strains(set_species,set_abundance)
 	return list(set_species),set_abundance,set_counts,est_species_alone,est_species_ab,est_genus_alone,est_genus_ab
 
 def dataset_truth(dataset):
-	# truth is in format |species|abundance|counts|genome size| where undefined counts is 0
-	# and species may include alternate species names separated by a comma
+	""" truth is in format |species|abundance|counts|genome size| where undefined counts is 0
+	 and species may include alternate species names separated by a comma """
 
 	if dataset == 'i100':
 		truth = np.array(zip(*[("acinetobacter_baumannii_sdf",0.9918569894,0,3477999),("alkalilimnicola_ehrlichii_mlhe-1",0.9534103189,0,3275944),("alkaliphilus_metalliredigens_qymf",1.0337468099,0,4929566),("anabaena_variabilis_atcc_29413",0.8701233754,0,7068604),("bacillus_anthracis_str._ames",1.0629349921,0,5227293),("bacillus_cereus_atcc_10987",0.9077576661,0,5432653),("bacillus_cereus_atcc_14579",1.4619387586,0,5427084),("bacillus_cereus_e33l",0.9147432601,0,5843240),("bacillus_clausii_ksm-k16",0.9028911617,0,4303871),("bacillus_halodurans_c-125",0.8847367596,0,4202352),("bacillus_subtilis_subsp._subtilis_str._168",0.8765090628,0,4214547),("bacillus_thuringiensis_str._al_hakam",0.9505918962,0,5313031),("bacteroides_thetaiotaomicron_vpi-5482",0.8661600805,0,6293400),("bordetella_bronchiseptica_rb50",1.1977086557,0,5339179),("borrelia_garinii_pbi",1.1270363889,0,986916),("buchnera_aphidicola_bcc",0.8652027125,0,422435),("burkholderia_phymatum_stm815",1.0474017422,0,8676565),("burkholderia_pseudomallei_668",0.8953944405,0,7040404),("campylobacter_concisus_13826",1.0403648471,0,2099415),("candidatus_blochmannia_pennsylvanicus_str._bpen",0.9129394805,0,791654),("chlamydia_trachomatis_l2b/uch-1/proctitis",0.9593251688,0,1038863),("chlamydophila_caviae_gpic",0.8711493582,0,1181357),("chlamydophila_pneumoniae_cwl029",0.8810983686,0,1230230),("chlorobium_luteolum_dsm_273",0.9264853736,0,2364842),("chromobacterium_violaceum_atcc_12472",0.9624326898,0,4751080),("clostridium_beijerinckii_ncimb_8052",0.9656484821,0,6000632),("clostridium_botulinum_b1_str._okra",0.9478594593,0,4107014),("clostridium_novyi_nt",1.1580488951,0,2547720),("clostridium_thermocellum_atcc_27405",0.9330381139,0,3843301),("corynebacterium_efficiens_ys-314",1.0275058892,0,3219507),("corynebacterium_urealyticum_dsm_7109",1.0008453082,0,2369219),("coxiella_burnetii_rsa_493",0.9184749477,0,2032675),("cyanothece_sp._atcc_51142",0.9401343144,0,5460382),("cytophaga_hutchinsonii_atcc_33406",0.9563196367,0,4433218),("erwinia_tasmaniensis",1.1018606017,0,4067869),("escherichia_coli_apec_o1",0.9061021819,0,5497655),("escherichia_coli_e24377a",0.9244094549,0,5249294),("escherichia_coli_str._k-12_substr._mg1655",0.9836152016,0,4639637),("escherichia_coli_str._k-12_substr._w3110",1.2861538913,0,4646332),("francisella_tularensis_subsp._tularensis_fsc198",0.8799240389,0,1892616),("geobacter_sulfurreducens_pca",0.8822915619,0,3814128),("haemophilus_influenzae_rd_kw20",0.8925873316,0,1830138),("haemophilus_somnus_129pt",0.9353392713,0,2012879),("haloquadratum_walsbyi_dsm_16790",0.9724329129,0,3179362),("herpetosiphon_aurantiacus_dsm_785",0.8671305022,0,6785432),("hyphomonas_neptunium_atcc_15444",0.9797413592,0,3705021),("idiomarina_loihiensis_l2tr",0.9111749381,0,2839318),("ignicoccus_hospitalis_kin4/i",0.9286138232,0,1297538),("lactobacillus_delbrueckii_subsp._bulgaricus_atcc_baa-365",1.1765523477,0,1856951),("lactobacillus_salivarius_ucc118",0.9013332759,0,2133980),("lactococcus_lactis_subsp._cremoris_sk11",0.9377036228,0,2598353),("lactococcus_lactis_subsp._lactis_il1403",1.3855635178,0,2365589),("lawsonia_intracellularis_phe/mn1-00",0.9204063033,0,1719017),("leptospira_borgpetersenii_serovar_hardjo-bovis_jb197",0.8633259013,0,3876236),("listeria_welshimeri_serovar_6b_str._slcc5334",0.8859899334,0,2814130),("methanococcus_maripaludis_c7",0.9452084692,0,1772694),("mycobacterium_avium_subsp._paratuberculosis_k-10",0.8872643124,0,4829781),("mycobacterium_bovis_af2122/97",0.8998056707,0,4345492),("mycobacterium_marinum_m",0.8776298824,0,6660145),("mycobacterium_sp._jls",1.7694735192,0,6048425),("mycobacterium_tuberculosis_f11",0.9044804156,0,4424435),("neisseria_gonorrhoeae_fa_1090",0.9876497049,0,2153922),("neisseria_meningitidis_mc58",0.9307972132,0,2272360),("nostoc_punctiforme_pcc_73102",0.8983073115,0,9059196),("ochrobactrum_anthropi_atcc_49188",1.0160158194,0,5205782),("prochlorococcus_marinus_str._mit_9313",1.0107078939,0,2410873),("prochlorococcus_marinus_str._natl1a",0.9689793951,0,1864731),("pseudomonas_putida_w619",1.2512067245,0,5774330),("pseudomonas_stutzeri_a1501",0.8912213302,0,4567418),("psychrobacter_cryohalolentis_k5",2.2276838861,0,3101098),("psychromonas_ingrahamii_37",0.8691118092,0,4559598),("ralstonia_eutropha_h16",0.8885605469,0,3364647),("rhodococcus_jostii_rha1",0.8835041681,0,9702740),("rhodopseudomonas_palustris_bisa53",1.0715558086,0,5505494),("rhodopseudomonas_palustris_cga009",1.0056581462,0,5476069),("rickettsia_prowazekii_str._madrid_e",0.8939780971,0,1111523),("salmonella_enterica_subsp._enterica_serovar_paratyphi_b_str._spb7",1.113841943,0,4858887),("shewanella_sp._mr-7",0.896837214,0,4799110),("sinorhizobium_meliloti_1021",0.8743176015,0,6691696),("sodalis_glossinidius_str._'morsitans'",0.9426347213,0,4292505),("staphylococcus_aureus_subsp._aureus_jh1",1.1416733976,0,2936937),("staphylococcus_aureus_subsp._aureus_mrsa252",0.8754051191,0,2902619),("staphylococcus_aureus_subsp._aureus_mu3",0.8642580865,0,2880168),("staphylococcus_aureus_subsp._aureus_mw2",1.0909113027,0,2820462),("staphylococcus_aureus_subsp._aureus_nctc_8325",0.8787680456,0,2821361),("staphylococcus_aureus_subsp._aureus_str._newman",0.9760172336,0,2878897),("streptococcus_agalactiae_2603v/r",1.054906113,0,2160267),("streptococcus_pneumoniae_r6",1.2222455073,0,2038615),("streptococcus_pyogenes_mgas315",0.8732460774,0,1900521),("streptococcus_pyogenes_mgas5005",1.0216060126,0,1838554),("synechococcus_elongatus_pcc_6301",0.8681143003,0,2696255),("synechococcus_elongatus_pcc_7942",1.5752103822,0,2796473),("syntrophomonas_wolfei_subsp._wolfei_str._goettingen",0.9094481382,0,2936195),("thermosipho_melanesiensis_bi429",0.9223838063,0,1915238),("thermus_thermophilus_hb8",0.9962505203,0,2197216),("thiobacillus_denitrificans_atcc_25259",1.0808489742,0,2909809),("treponema_denticola_atcc_35405",0.8898793162,0,2843201),("ureaplasma_parvum_serovar_3_str._atcc_700970",0.87219013,0,751719),("wigglesworthia_glossinidia_endosymbiont_of_glossina_brevipalpis",1.3295506979,0,703005),("yersinia_pestis_co92",0.9165878579,0,4829858)]))
@@ -109,6 +115,8 @@ def dataset_truth(dataset):
 	return true_species,true_abundance,true_counts,true_size,true_species_alone,true_species_ab,true_genus_alone,true_genus_ab
 
 def calc_error(true_species,true_abundance,est_species,est_abundance):
+	""" Calculate errors between true and estimated abundances """
+
 	adjusted_abundance = np.zeros((len(true_abundance)))
 	if true_species != est_species:
 		if len(true_species) == len(est_species): # name synonyms
@@ -149,7 +157,20 @@ def calc_error(true_species,true_abundance,est_species,est_abundance):
 def graph_error(true_species,true_abundance,est_species,est_abundance,adjusted_abundance,diff,expname,tier,showgraphs=False):
 	true_sp = [x.replace('_',' ') for x in true_species]
 	all_species = list(set(est_species + true_species))
-	mean_ab = sum(est_abundance)/len(est_abundance)
+
+	filtered_ab = [r for r in est_abundance if r != 0] # exclude 0's from est_abundance to get a more sensible mean
+	mean_ab = sum(filtered_ab)/len(filtered_ab)
+
+	# pickle raw diffs for all species
+	all_est = [est_abundance[est_species.index(sp)] if sp in est_species else 0 for sp in all_species]
+	all_true = [true_abundance[true_species.index(sp)] if sp in true_species else 0 for sp in all_species]
+	all_diff = []
+	for i,a in enumerate(all_est):
+		try:
+			all_diff.append(100*(a - all_true[i]) / max(a,all_true[i]))
+		except ZeroDivisionError:
+			all_diff.append(0) # if both the estimate and the actual are 0, we're good here
+	pickle.dump(zip(all_species,all_diff),open(expname+"_diffs.pickle",'w'))
 
 	# graph true abundances
 	if len(all_species) == len(true_species):
@@ -226,7 +247,6 @@ def graph_error(true_species,true_abundance,est_species,est_abundance,adjusted_a
 	# graph diffs
 	if len(all_species) == len(true_species):
 		diff_combo = zip(true_sp,diff)
-		pickle.dump(diff_combo,open(expname+"_diffs.pickle",'w'))
 		diff_filter = diff_combo
 		diff_filter.sort( key=lambda x: x[1],reverse=True )
 		try:
@@ -251,7 +271,6 @@ def graph_error(true_species,true_abundance,est_species,est_abundance,adjusted_a
 			total_diff.append(100*(a-present_true[i])/max(a,present_true[i]))
 
 		diff_combo = zip(present_sp,total_diff)
-		pickle.dump(diff_combo,open(expname+"_diffs.pickle",'w'))
 		diff_filter = diff_combo
 		diff_filter.sort( key=lambda x: x[1],reverse=True )
 		try:
@@ -275,7 +294,7 @@ def graph_error(true_species,true_abundance,est_species,est_abundance,adjusted_a
 
 def main(argv=sys.argv):
 	filename = argv[1]
-	exp_name = filename.partition('_')[0] # will be used for graph-naming purposes
+	exp_name = filename.rpartition('_')[0] # will be used for graph-naming purposes
 	dataset = argv[2] #i100 or simLC
 
 	true_species,true_abundance,true_counts,true_size,true_species_alone,true_species_ab,true_genus_alone,true_genus_ab = dataset_truth(dataset)
@@ -283,7 +302,7 @@ def main(argv=sys.argv):
 
 	print "Strain-level error:"
 	diff,adjusted_abundance = calc_error(true_species,true_abundance,est_species,est_abundance)
-	graph_error(true_species,true_abundance,est_species,est_abundance,adjusted_abundance,diff,exp_name,'strain',True)
+	graph_error(true_species,true_abundance,est_species,est_abundance,adjusted_abundance,diff,exp_name,'strain')
 	print "Species-level error:"
 	diff,adjusted_abundance = calc_error(true_species_alone,true_species_ab,est_species_alone,est_species_ab)
 #	graph_error(true_species_alone,true_species_ab,est_species_alone,est_species_ab,adjusted_abundance,diff,exp_name,'species')
