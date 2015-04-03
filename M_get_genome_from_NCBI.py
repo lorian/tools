@@ -58,6 +58,7 @@ def get_genome(species_orig):
 	# get genome ID
 	if 'refseq_ID_list' in globals():
 		chr_id = refseq_ID_list[species_list.index(species_orig)]
+		print "REFSEQ: {0}".format(chr_id)
 		page_genome = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=genome&term={0}'.format(chr_id))
 	else:
 		page_genome = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=genome&term={0}'.format(urllib2.quote(species)))
@@ -83,28 +84,64 @@ def get_genome(species_orig):
 	# get fastas
 	try:
 		page_fasta = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&query_key={0}&WebEnv={1}&rettype=fasta&retmode=text'.format(query_key,web_env))
-		print  'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&query_key={0}&WebEnv={1}&rettype=fasta&retmode=text'.format(query_key,web_env)
 	except:
 		print "FAILED TO GET FASTA PAGE FOR {0}".format(species)
-		return 0
+	else:
+		# copy fastas, trying to skip duplicates
+		fasta = ""
+		skip = False
+		entries = []
+		for line in page_fasta:
+			if not skip or line.startswith('>'): # if skip, avoid entire loop until next new record
+				skip = False
+				nl = parse_line(line,species,entries)
+				if nl:
+					fasta = fasta + nl
+				else:
+					skip = True
 
-	# copy fastas, trying to skip duplicates
-	fasta = ""
-	skip = False
-	entries = []
-	for line in page_fasta:
-		if not skip or line.startswith('>'): # if skip, avoid entire loop until next new record
-			skip = False
-			nl = parse_line(line,species,entries)
-			if nl:
-				fasta = fasta + nl
-			else:
-				skip = True
-
-	fasta = fasta + "\n"
-	mfa.write(fasta) # write fastas to file
+		fasta = fasta + "\n"
+		mfa.write(fasta) # write fastas to file
 	mfa.truncate()
 	mfa.close()
+
+	# If above method doesn't work, get chr directly
+	if not os.path.isfile(filename) or os.path.getsize(filename) < 200:
+		if 'refseq_ID_list' in globals():
+			chr_id = refseq_ID_list[species_list.index(species_orig)]
+			print "Backup attempt:".format(chr_id)
+
+			page_chr = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nuccore&term={0}'.format(chr_id))
+			genome_id = ""
+			for line in page_chr:
+				line = string.replace(line,"\t","")
+				if line.startswith("<Id>"):
+					if genome_id != "":
+						print "Duplicate IDs for {0}; skipping.".format(species)
+						return
+					genome_id = line[4:-6]
+
+			page_fasta = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={0}&rettype=fasta&retmode=text'.format(genome_id))
+
+			mfa = open(filename, 'w') # overwrite fasta file
+			mfa.seek(0)
+			fasta = ""
+			skip = False
+			entries = []
+			for line in page_fasta:
+				if not skip or line.startswith('>'): # if skip, avoid entire loop until next new record
+					skip = False
+					nl = parse_line(line,species,entries) # does the fasta entry match our species?
+					if nl:
+						fasta = fasta + nl
+					else:
+						skip = True
+
+			fasta = fasta + "\n"
+			mfa.write(fasta) # write fastas to file
+			mfa.truncate()
+			mfa.close()
+
 
 i100_species_list = [
 	'Psychrobacter cryohalolentis K5',
@@ -735,17 +772,17 @@ species_list = [
 	"Acaryochloris marina MBIC11017",
 	"Acholeplasma laidlawii PG-8A",
 	"Acidiphilium cryptum JF-5",
-	"Acidobacteria bacterium Ellin345",
+	"Candidatus Koribacter versatilis Ellin345", #"Acidobacteria bacterium Ellin345",
 	"Acidothermus cellulolyticus 11B",
 	"Acidovorax sp. JS42",
 	"Acinetobacter baumannii ATCC 17978",
-	"Acinetobacter sp. ADP1",
+	"Acinetobacter sp. ADP1", #??
 	"Actinobacillus pleuropneumoniae L20",
 	"Actinobacillus succinogenes 130Z",
 	"Aeromonas hydrophila subsp. hydrophila ATCC 7966",
 	"Aeromonas salmonicida subsp. salmonicida A449",
-	"Alcanivorax borkumensis SK2",
-	"Alkalilimnicola ehrlichei MLHE-1",
+	"Alcanivorax borkumensis SK2", #??
+	"Alkalilimnicola ehrlichii MLHE-1", #"Alkalilimnicola ehrlichei MLHE-1",
 	"Alkaliphilus oremlandii OhILAs",
 	"Anaeromyxobacter dehalogenans 2CP-C",
 	"Anaeromyxobacter sp. Fw109-5",
