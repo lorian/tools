@@ -1062,7 +1062,7 @@ species_list = [
 	"Ralstonia solanacearum GMI1000",
 	"Renibacterium salmoninarum ATCC 33209",
 	"Rhizobium etli CFN 42",
-	"Rhizobium leguminosarum bv. viciae strain 3841", #"Rhizobium leguminosarum bv. viciae 3841",
+	"rhizobium leguminosarum bv. viciae chromosome complete genome, strain 3841", #"Rhizobium leguminosarum bv. viciae 3841",
 	"Rhodobacter sphaeroides 2.4.1",
 	"Rhodococcus jostii RHA1", #"Rhodococcus sp. RHA1",
 	"Rhodoferax ferrireducens T118",
