@@ -52,7 +52,7 @@ def main():
 	test_basename = 'testJ'
 	express_outputname = 'testJ3' # for keeping track of different express runs
 	version = '2.0'
-	cores = 30
+	cores = 20
 	raw_fasta_file = 'illumina_100genomes.mfa'
 	fastq_file_r1 = "illumina_100species_trimmed.1.fq"
 	fastq_file_r2 = "illumina_100species_trimmed.2.fq"
