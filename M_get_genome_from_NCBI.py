@@ -15,7 +15,7 @@ def parse_line(line,species,entries):
 			else: # valid new fasta that matches species
 				entries.append(name)
 				print "Added {0}".format(name)
-				return '>' + species.replace (" ", "_") + " " + line[1:] #add name to beginning of ID line
+				return '>' + species.replace(" ", "_") + '_' + line[1:] #add name to beginning of ID line
 		else: # does not match species
 			print "\tSkipping {0}".format(name)
 			return False
