@@ -4,12 +4,18 @@ import urllib2
 import string
 import os.path
 
+def has_genome(entries): #do we already have a complete genome?
+	for e in entries:
+		if e.find('complete genome') != -1:
+			return True
+	return False
+
 def parse_line(line,species,entries):
 
 	if line.startswith('>'): # new fasta entry
 		name = line[line.find(" ")+1:].lower()[:-1]
 		if name.find(species) != -1: # matches species
-			if name in entries: # duplicate entry
+			if name in entries or ((name.find('complete genome') != -1 or name.find('whole genome') != -1) and has_genome(entries)): # duplicate entry
 				print "\tSkipping duplicate {0}".format(name)
 				return False
 			else: # valid new fasta that matches species
@@ -17,7 +23,7 @@ def parse_line(line,species,entries):
 				print "Added {0}".format(name)
 				return '>' + species.replace(" ", "_") + '_' + line[1:] #add name to beginning of ID line
 		else: # does not match species
-			print "\tSkipping {0}".format(name)
+			#print "\tSkipping {0}".format(name)
 			return False
 	elif line.startswith('<'): # xml instead of fasta
 		print "ERROR: FASTA EMPTY PAGE"
@@ -52,13 +58,13 @@ def get_genome(species_orig):
 			line = string.replace(line,"\t","") # unfortunately this xml page uses spaces
 			if line.startswith('    <ScientificName>'):
 				species = line[20:-18].lower()
-				print 'Actual species name: {0}'.format(species)
+				#print 'Actual species name: {0}'.format(species)
 				break
 
 	# get genome ID
 	if 'refseq_ID_list' in globals():
 		chr_id = refseq_ID_list[species_list.index(species_orig)]
-		print "REFSEQ: {0}".format(chr_id)
+		#print "REFSEQ: {0}".format(chr_id)
 		page_genome = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=genome&term={0}'.format(chr_id))
 	else:
 		page_genome = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=genome&term={0}'.format(urllib2.quote(species)))
@@ -68,7 +74,7 @@ def get_genome(species_orig):
 		line = string.replace(line,"\t","")
 		if line.startswith("<Id>"):
 			if genome_id != "":
-				print "Duplicate IDs for {0}; skipping.".format(species)
+				#print "Duplicate IDs for {0}; skipping.".format(species)
 				return
 			genome_id = line[4:-6]
 
@@ -109,7 +115,7 @@ def get_genome(species_orig):
 	if not os.path.isfile(filename) or os.path.getsize(filename) < 200:
 		if 'refseq_ID_list' in globals():
 			chr_id = refseq_ID_list[species_list.index(species_orig)]
-			print "Backup attempt:".format(chr_id)
+			#print "Backup attempt:".format(chr_id)
 
 			page_chr = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nuccore&term={0}'.format(chr_id))
 			genome_id = ""
@@ -117,7 +123,7 @@ def get_genome(species_orig):
 				line = string.replace(line,"\t","")
 				if line.startswith("<Id>"):
 					if genome_id != "":
-						print "Duplicate IDs for {0}; skipping.".format(species)
+						#print "Duplicate IDs for {0}; skipping.".format(species)
 						return
 					genome_id = line[4:-6]
 
