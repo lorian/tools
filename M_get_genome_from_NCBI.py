@@ -4,19 +4,26 @@ import urllib2
 import string
 import os.path
 
-def has_genome(entries): #do we already have a complete genome?
+def has_genome(entries): #is there a complete genome in the list?
 	for e in entries:
-		if e.find('complete genome') != -1:
+		if e.find('plasmid') == -1 and e.find('complete genome') != -1:
 			return True
 	return False
+
+def check_duplicate(entries,name): #do we already have this entry in our fasta?
+	# first standardize chromosome names:
+	if (name in entries or name.find('whole genome')
+						or (has_genome([name]) and has_genome(entries))):
+		print "\tSkipping duplicate {0}".format(name)
+		return True #duplicate
+	return False #not a dupe
 
 def parse_line(line,species,entries):
 
 	if line.startswith('>'): # new fasta entry
-		name = line[line.find(" ")+1:].lower()[:-1]
+		name = line[line.find(" ")+1:].lower()[:-1].replace('chromosome i','chromosome 1').replace('chromosome ii','chromosome 2')
 		if name.find(species) != -1: # matches species
-			if name in entries or ((name.find('complete genome') != -1 or name.find('whole genome') != -1) and has_genome(entries)): # duplicate entry
-				print "\tSkipping duplicate {0}".format(name)
+			if check_duplicate(entries,name):
 				return False
 			else: # valid new fasta that matches species
 				entries.append(name)
@@ -775,6 +782,12 @@ refseq_ID_list = [
 ]
 
 species_list = [
+	"Bartonella tribocorum CIP 105476",
+	"Brucella suis 1330",
+
+]
+
+real_species_list = [
 	"Acaryochloris marina MBIC11017",
 	"Acholeplasma laidlawii PG-8A",
 	"Acidiphilium cryptum JF-5",
