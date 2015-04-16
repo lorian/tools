@@ -782,12 +782,6 @@ refseq_ID_list = [
 ]
 
 species_list = [
-	"Bartonella tribocorum CIP 105476",
-	"Brucella suis 1330",
-
-]
-
-real_species_list = [
 	"Acaryochloris marina MBIC11017",
 	"Acholeplasma laidlawii PG-8A",
 	"Acidiphilium cryptum JF-5",
