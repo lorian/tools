@@ -15,7 +15,7 @@ def check_duplicate(entries,name): #do we already have this entry in our fasta?
 	# first standardize chromosome names:
 	if (name in entries or name.find('whole genome') != -1
 						or (has_genome([name]) and has_genome(entries))):
-		print "\tSkipping {0}".format(name)
+		#print "\tSkipping {0}".format(name)
 		return True #duplicate
 	return False #not a dupe
 
@@ -23,7 +23,6 @@ def parse_line(line,species,entries):
 
 	if line.startswith('>'): # new fasta entry
 		name = line[line.find(" ")+1:].lower()[:-1].replace('chromosome ii','chromosome 2').replace('chromosome i','chromosome 1')
-		print "\t\t{0}".format(name)
 		if name.find(species) != -1: # matches species
 			if check_duplicate(entries,name):
 				return False
@@ -61,7 +60,7 @@ def get_genome(species_orig):
 		try:
 			page_tax = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=taxonomy&id={0}'.format(tax_id))
 		except:
-			print "FAILED TO GET TAXONOMY PAGE FOR {0}".format(species)
+			#print "FAILED TO GET TAXONOMY PAGE FOR {0}".format(species)
 			return 0
 
 		for line in page_tax:
@@ -100,8 +99,6 @@ def get_genome(species_orig):
 	# get fastas
 	try:
 		page_fasta = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&query_key={0}&WebEnv={1}&rettype=fasta&retmode=text'.format(query_key,web_env))
-	except:
-		print "FAILED TO GET FASTA PAGE FOR {0}".format(species)
 	else:
 		# copy fastas, trying to skip duplicates
 		fasta = ""
@@ -125,7 +122,7 @@ def get_genome(species_orig):
 	if not os.path.isfile(filename) or os.path.getsize(filename) < 200 or not has_genome(entries):
 		if 'refseq_ID_list' in globals():
 			chr_id = refseq_ID_list[species_list.index(species_orig)]
-			print "Backup attempt:"
+			#print "Backup attempt:"
 
 			page_chr = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nuccore&term={0}'.format(chr_id))
 			genome_id = ""
@@ -152,11 +149,14 @@ def get_genome(species_orig):
 						fasta = fasta + nl
 					else:
 						skip = True
-
 			fasta = fasta + "\n"
 			mfa.write(fasta) # write fastas to file
 			mfa.truncate()
 			mfa.close()
+
+		else:
+			print "UTTERLY FAILED: {0}".format(species)
+
 
 
 i100_species_list = [
