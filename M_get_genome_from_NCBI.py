@@ -1192,7 +1192,7 @@ def main(argv=sys.argv):
 	Command line usage: python M_get_genome_from_NCBI.py
 						[species (optional)]
 	"""
-	if argv[1]:
+	if len(argv) > 1:
 		species_source = [argv[1]] # can enter single species for lookup on command line
 		print "Species to look up set as {0}".format(species_source)
 	else:
