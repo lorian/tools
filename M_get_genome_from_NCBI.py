@@ -99,6 +99,8 @@ def get_genome(species_orig):
 	# get fastas
 	try:
 		page_fasta = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&query_key={0}&WebEnv={1}&rettype=fasta&retmode=text'.format(query_key,web_env))
+	except:
+		pass
 	else:
 		# copy fastas, trying to skip duplicates
 		fasta = ""
