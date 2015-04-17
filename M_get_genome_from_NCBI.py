@@ -28,7 +28,7 @@ def parse_line(line,species,entries):
 				return False
 			else: # valid new fasta that matches species
 				entries.append(name)
-				print "Added {0}".format(name)
+				#print "Added {0}".format(name)
 				return '>' + species.replace(" ", "_") + '_' + line[1:] #add name to beginning of ID line
 		else: # does not match species
 			#print "\tSkipping {0}".format(name)
@@ -45,8 +45,8 @@ def get_genome(species_orig):
 
 	if os.path.isfile(filename) and os.path.getsize(filename) > 200: # don't re-run if file exists and is sensible size
 		return
-	else:
-		print "SPECIES: {0}".format(species_orig)
+#	else:
+#		print "SPECIES: {0}".format(species_orig)
 
 	mfa = open(filename, 'w') # new fasta file for every species
 	mfa.seek(0)
@@ -73,7 +73,7 @@ def get_genome(species_orig):
 	# get genome ID
 	if 'refseq_ID_list' in globals():
 		chr_id = refseq_ID_list[species_list.index(species_orig)]
-		print "\tREFSEQ: {0}".format(chr_id)
+		#print "\tREFSEQ: {0}".format(chr_id)
 		page_genome = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=genome&term={0}'.format(chr_id))
 	else:
 		page_genome = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=genome&term={0}'.format(urllib2.quote(species)))
@@ -156,9 +156,12 @@ def get_genome(species_orig):
 			mfa.truncate()
 			mfa.close()
 
+		# complete failure
 		else:
-			print "UTTERLY FAILED: {0}".format(species)
-
+			try:
+				print "UTTERLY FAILED: {0} {1}".format(refseq_ID_list[species_list.index(species_orig)],species)
+			except:
+				print "UTTERLY FAILED: {0}".format(species)
 
 
 i100_species_list = [
