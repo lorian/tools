@@ -12,6 +12,49 @@ import pprint
 
 numpy.set_printoptions(precision=4)
 
+class Dataset():
+	species = []
+	abundance = []
+	counts = []
+	size = []
+
+	def __init__(self, species=[], abundance=[], counts=[], size=[]):
+		self.species = species
+		self.abundance = abundance
+		self.counts = counts
+		self.size = size # can be empty
+		self.clean_names()
+
+	def add_record(self,new_species,new_abundance,new_count,new_size=None):
+		self.species.append(lanthpy.genome_name_cleanup(new_species))
+		self.abundance.append(new_abundance)
+		self.counts.append(new_counts)
+		self.size.append(new_size)
+
+	def clean_names(self):
+		self.species = lanthpy.genome_name_cleanup(self.species)
+
+	def return_array(self):
+		return zip(self.species,self.abundance,self.counts)
+
+	def set_by_array(self,array):
+		self.species, self.abundance, self.counts = zip(*array)
+
+	def lookup_abundance(self,species):
+		try:
+			return self.abundance[self.species.index(species)]
+		except:
+			return 0
+
+	def remove_record(self,kill_species):
+		return
+
+	def remove_matches(self,target):
+		self.set_by_array([r for r in self.return_array() if (r[0].find(target) == -1)])
+		print "Number of entries after removing {0}: {1}".format(target,len(self.species))
+		return
+
+
 def collapse_strains(strains,abundance):
 	""" Group strains together by species and genus """
 
@@ -45,36 +88,18 @@ def process_input(filename,size,fragmented=False):
 	input_data = [r for r in input_csv]
 	input_data = input_data[1:] #remove header row
 
+	raw_est = Dataset()
 	if suffix == 'xprs': #express file
-		input_species = zip(*input_data)[1] # express species names are in second column
-		input_counts = numpy.array([float(i) for i in zip(*input_data)[6]]) # used when dataset abundances are given in raw counts
-		fpkm = numpy.array([float(i) for i in zip(*input_data)[10]]) # used when dataset abundances are given as percentages
-		print "Number of raw entries: {0}".format(len(input_species))
-		input_array = zip(input_species,fpkm,input_counts)
-		no_plasmids = [r for r in input_array if (r[0].lower()).find('plasmid') == -1] # remove plasmids from list
-
-		# Also want to remove ribosomal_RNA_gene, mitochondrion, and chloroplast
-
-		input_species,fpkm,input_counts = zip(*no_plasmids)
-		print "Number of entries after removing plasmids: {0}".format(len(input_species))
-		#input_abundance = numpy.array(fpkm)*100/numpy.sum(fpkm)
-		input_abundance = fpkm
+		raw_est.species = zip(*input_data)[1] # express species names are in second column
+		raw_est.counts = numpy.array([float(i) for i in zip(*input_data)[6]]) # used when dataset abundances are given in raw counts
+		raw_est.abundance = numpy.array([float(i) for i in zip(*input_data)[10]]) # used when dataset abundances are given as percentages
 
 	elif filename.endswith('expression.txt'): # kallisto file
-		input_species = zip(*input_data)[0] # kallisto species names are in first column
-		input_counts = numpy.array([float(i) for i in zip(*input_data)[4]]) # used when dataset abundances are given in raw counts
-		tpm = numpy.array([float(i) for i in zip(*input_data)[3]]) # used when dataset abundances are given as percentages
-		print "Number of raw entries: {0}".format(len(input_species))
-		input_array = zip(input_species,tpm,input_counts)
-		no_plasmids = [r for r in input_array if r[0].find('plasmid') == -1] # remove plasmids from list
+		raw_est.species = zip(*input_data)[0] # kallisto species names are in first column
+		raw_est.counts = numpy.array([float(i) for i in zip(*input_data)[4]]) # used when dataset abundances are given in raw counts
+		raw_est.abundance = numpy.array([float(i) for i in zip(*input_data)[3]]) # used when dataset abundances are given as percentages
 
-		# Also want to remove ribosomal_RNA_gene, mitochondrion, and chloroplast
-
-		input_species,tpm,input_counts = zip(*no_plasmids)
-		print "Number of entries after removing plasmids: {0}".format(len(input_species))
-		input_abundance = tpm
-
-	elif suffix == 'txt': #gasic file
+	elif suffix == 'txt': #gasic file - NOT WORKING
 		input_species = zip(*input_data)[0] # gasic species names are in first column
 		input_counts = numpy.array([float(i) for i in zip(*input_data)[2]]) # used when dataset abundances are given in raw counts
 		input_array = zip(input_species,input_counts)
@@ -85,12 +110,15 @@ def process_input(filename,size,fragmented=False):
 	else:
 		print "File is not supported input type"
 
-	species = lanthpy.genome_name_cleanup(input_species)
+	print "Number of raw entries: {0}".format(len(raw_est.species))
+	raw_est.clean_names()
+	raw_est.remove_matches('plasmid')
 
-	#pprint.pprint(species)
+	# Also want to remove ribosomal_RNA_gene, mitochondrion, and chloroplast
+
 
 	# Combine duplicate species
-	dup_data = zip(species,input_abundance,input_counts)
+	dup_data = raw_est.return_array()
 	set_sp = {}
 	set_ab = {}
 	set_co = {}
@@ -141,8 +169,9 @@ def process_input(filename,size,fragmented=False):
 			if set_abundance[i] != 0:
 				f.write('{0}\t{1}\n'.format(species,set_abundance))
 
+	est = Dataset(set_species,set_abundance,set_counts)
 	est_species_alone, est_species_ab, est_genus_alone, est_genus_ab = collapse_strains(set_species,set_abundance)
-	return list(set_species),set_abundance,set_counts,est_species_alone,est_species_ab,est_genus_alone,est_genus_ab
+	return est,list(set_species),set_abundance,set_counts,est_species_alone,est_species_ab,est_genus_alone,est_genus_ab
 
 def dataset_truth(dataset):
 	""" truth is in format |species|abundance|counts|genome size| where undefined counts is 0
@@ -167,10 +196,16 @@ def dataset_truth(dataset):
 	true_species = [s.lower().translate(string.maketrans("",""),bad_punct).replace(" ","_") for s in truth[0]]
 	true_species_alone,true_species_ab,true_genus_alone,true_genus_ab = collapse_strains(true_species,true_abundance)
 
-	return true_species,true_abundance,true_counts,true_size,true_species_alone,true_species_ab,true_genus_alone,true_genus_ab
+	truth = Dataset(true_species,true_abundance,true_counts,true_size)
+	return truth,true_species,true_abundance,true_counts,true_size,true_species_alone,true_species_ab,true_genus_alone,true_genus_ab
 
-def calc_error(true_species,true_abundance,est_species,est_abundance):
+def calc_error(truth,est):
 	""" Calculate errors between true and estimated abundances """
+
+	true_species = truth.species
+	true_abundance = truth.abundance
+	est_species = est.species
+	est_abundance = est.abundance
 
 	adjusted_abundance = numpy.zeros((len(true_abundance)))
 
@@ -362,12 +397,11 @@ def main(argv=sys.argv):
 	else:
 		show_graphs = True
 
-	true_species,true_abundance,true_counts,true_size,true_species_alone,true_species_ab,true_genus_alone,true_genus_ab = dataset_truth(dataset)
-	est_species,est_abundance,est_counts,est_species_alone,est_species_ab,est_genus_alone,est_genus_ab = process_input(filename,true_size)
+	truth,true_species,true_abundance,true_counts,true_size,true_species_alone,true_species_ab,true_genus_alone,true_genus_ab = dataset_truth(dataset)
+	est,est_species,est_abundance,est_counts,est_species_alone,est_species_ab,est_genus_alone,est_genus_ab = process_input(filename,true_size)
 
 	print "Strain-level error:"
-	diff, adjusted_abundance = calc_error(true_species, true_abundance,
-											est_species, est_abundance)
+	diff, adjusted_abundance = calc_error(truth,est)
 	if show_graphs:
 		graph_error(true_species, true_abundance, est_species, est_abundance,
 					adjusted_abundance, diff, exp_name, 'strain', fragmented)
