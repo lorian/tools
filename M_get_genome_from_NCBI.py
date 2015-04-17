@@ -3,6 +3,7 @@
 import urllib2
 import string
 import os.path
+import sys
 
 def has_genome(entries): #is there a complete genome in the list?
 	for e in entries:
@@ -12,16 +13,17 @@ def has_genome(entries): #is there a complete genome in the list?
 
 def check_duplicate(entries,name): #do we already have this entry in our fasta?
 	# first standardize chromosome names:
-	if (name in entries or name.find('whole genome')
+	if (name in entries or name.find('whole genome') != -1
 						or (has_genome([name]) and has_genome(entries))):
-		print "\tSkipping duplicate {0}".format(name)
+		print "\tSkipping {0}".format(name)
 		return True #duplicate
 	return False #not a dupe
 
 def parse_line(line,species,entries):
 
 	if line.startswith('>'): # new fasta entry
-		name = line[line.find(" ")+1:].lower()[:-1].replace('chromosome i','chromosome 1').replace('chromosome ii','chromosome 2')
+		name = line[line.find(" ")+1:].lower()[:-1].replace('chromosome ii','chromosome 2').replace('chromosome i','chromosome 1')
+		print "\t\t{0}".format(name)
 		if name.find(species) != -1: # matches species
 			if check_duplicate(entries,name):
 				return False
@@ -53,6 +55,7 @@ def get_genome(species_orig):
 	if 'tax_ID_list' in globals():
 		# species ID
 		tax_id = tax_ID_list[species_list.index(species_orig)]
+		print "\tID: {0}".format(tax_id)
 
 		# get species name
 		try:
@@ -71,7 +74,7 @@ def get_genome(species_orig):
 	# get genome ID
 	if 'refseq_ID_list' in globals():
 		chr_id = refseq_ID_list[species_list.index(species_orig)]
-		#print "REFSEQ: {0}".format(chr_id)
+		print "\tREFSEQ: {0}".format(chr_id)
 		page_genome = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=genome&term={0}'.format(chr_id))
 	else:
 		page_genome = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=genome&term={0}'.format(urllib2.quote(species)))
@@ -119,10 +122,10 @@ def get_genome(species_orig):
 	mfa.close()
 
 	# If above method doesn't work, get chr directly
-	if not os.path.isfile(filename) or os.path.getsize(filename) < 200:
+	if not os.path.isfile(filename) or os.path.getsize(filename) < 200 or not has_genome(entries):
 		if 'refseq_ID_list' in globals():
 			chr_id = refseq_ID_list[species_list.index(species_orig)]
-			#print "Backup attempt:".format(chr_id)
+			print "Backup attempt:"
 
 			page_chr = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nuccore&term={0}'.format(chr_id))
 			genome_id = ""
@@ -1184,6 +1187,19 @@ species_list = [
 	"Zymomonas mobilis subsp. mobilis ZM4"
 	]
 
-for s in species_list:
-	get_genome(s)
+def main(argv=sys.argv):
+	"""
+	Command line usage: python M_get_genome_from_NCBI.py
+						[species (optional)]
+	"""
+	if argv[1]:
+		species_source = [argv[1]] # can enter single species for lookup on command line
+		print "Species to look up set as {0}".format(species_source)
+	else:
+		species_source = species_list
 
+	for s in species_source:
+		get_genome(s)
+
+if __name__ == "__main__":
+    main()
