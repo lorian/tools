@@ -45,16 +45,22 @@ class Dataset():
 		return zip(self.species,self.abundance,self.counts)
 
 	def lookup_abundance(self, species):
-		try:
-			return self.abundance[self.species.index(species)]
-		except:
-			return 0
+		for sp in species.split('?'):
+			try:
+				return self.abundance[self.species.index(sp)]
+			except:
+				pass
+		print "Failed to find abundance of {0}.".format(species)
+		return 0
 
 	def lookup_count(self, species):
-		try:
-			return self.counts[self.species.index(species)]
-		except:
-			return 0
+		for sp in species.split('?'):
+			try:
+				return self.counts[self.species.index(sp)]
+			except:
+				pass
+		print "Failed to find counts for {0}.".format(species)
+		return 0
 
 	def lookup_length(self):
 		assert len(self.species) == len(self.abundance) == len(self.counts)
@@ -219,23 +225,7 @@ def calc_error(truth,est):
 
 	if truth.species != est.species:
 		for ind,sp in enumerate(truth.species):
-			try:
-				sp_match = est.species.index(sp)
-			except ValueError: # most likely due to synonym
-				try:
-					sp_match = est.species.index(truth.species[ind].partition('?')[0])
-				except ValueError:
-					try:
-						sp_match = est.species.index(truth.species[ind].partition('?')[2])
-					except ValueError: # now we've really failed
-						print "Error: species match for {0} not found in estimated data. Setting abundance and counts to 0 for {0}.".format(sp)
-						adjusted_abundance[ind] = 0
-					else:
-						adjusted_abundance[ind] = est.abundance[sp_match]
-				else:
-					adjusted_abundance[ind] = est.abundance[sp_match]
-			else:
-				adjusted_abundance[ind] = est.abundance[sp_match]
+			adjusted_abundance[ind] = est.lookup_abundance(sp)
 	else:
 		adjusted_abundance = est.abundance
 
