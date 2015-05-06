@@ -5,6 +5,9 @@ import string
 import os.path
 import sys
 
+def replace_spaces(line):
+	return line.replace(" ", "_")
+
 def has_genome(entries): #is there a complete genome in the list?
 	for e in entries:
 		if e.find('plasmid') == -1 and e.find('complete genome') != -1:
@@ -22,14 +25,14 @@ def check_duplicate(entries,name): #do we already have this entry in our fasta?
 def parse_line(line,species,entries):
 
 	if line.startswith('>'): # new fasta entry
-		name = line[line.find(" ")+1:].lower()[:-1].replace('chromosome ii','chromosome 2').replace('chromosome i','chromosome 1')
+		name = line[line.find(" ")+1:].lower()[:-1].replace('chromosome ii','chromosome 2').replace('chromosome i','chromosome 1') #standardize name
 		if name.find(species) != -1: # matches species
 			if check_duplicate(entries,name):
 				return False
 			else: # valid new fasta that matches species
 				entries.append(name)
 				#print "Added {0}".format(name)
-				return '>' + species.replace(" ", "_") + '_' + line[1:] #add name to beginning of ID line
+				return '>' + replace_spaces(species) + '_' + replace_spaces(line[1:]) #add name to beginning of ID line
 		else: # does not match species
 			#print "\tSkipping {0}".format(name)
 			return False
@@ -41,7 +44,7 @@ def parse_line(line,species,entries):
 
 def get_genome(species_orig):
 	species = species_orig.lower()
-	filename = species.replace (" ", "_").replace('/',"") + '.mfa'
+	filename = species.replace(" ", "_").replace('/',"") + '.mfa'
 
 	if os.path.isfile(filename) and os.path.getsize(filename) > 200: # don't re-run if file exists and is sensible size
 		return
