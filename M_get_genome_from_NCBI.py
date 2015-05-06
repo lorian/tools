@@ -164,7 +164,7 @@ def get_genome(species_orig):
 				print "UTTERLY FAILED: {0}".format(species)
 
 
-i100_species_list = [
+species_list = [
 	'Psychrobacter cryohalolentis K5',
 	'Mycobacterium sp. JLS',
 	'Synechococcus elongatus PCC 7942',
@@ -269,7 +269,7 @@ i100_species_list = [
 	'Rhodopseudomonas palustris HaA2',
 	'Burkholderia ambifaria AMMD']
 
-i100_inactive_ID_list = [ #NCBI taxonomy id
+tax_id_list = [ #NCBI taxonomy id
 	316058,
 	288000,
 	269798,
@@ -386,7 +386,7 @@ i100_inactive_ID_list = [ #NCBI taxonomy id
 
 #i400
 
-refseq_ID_list = [
+i400_refseq_ID_list = [
 	"NC_009925",
 	"NC_010163",
 	"NC_009484",
@@ -789,7 +789,7 @@ refseq_ID_list = [
 	"NC_006526"
 ]
 
-species_list = [
+i400_species_list = [
 	"Acaryochloris marina MBIC11017",
 	"Acholeplasma laidlawii PG-8A",
 	"Acidiphilium cryptum JF-5",
