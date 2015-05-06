@@ -45,16 +45,22 @@ class Dataset():
 		return zip(self.species,self.abundance,self.counts)
 
 	def lookup_abundance(self, species):
-		try:
-			return self.abundance[self.species.index(species)]
-		except:
-			return 0
+		for sp in species.split('?'):
+			try:
+				return self.abundance[self.species.index(sp)]
+			except:
+				pass
+		print "Failed to find abundance of {0}.".format(species)
+		return 0
 
 	def lookup_count(self, species):
-		try:
-			return self.counts[self.species.index(species)]
-		except:
-			return 0
+		for sp in species.split('?'):
+			try:
+				return self.counts[self.species.index(sp)]
+			except:
+				pass
+		print "Failed to find counts for {0}.".format(species)
+		return 0
 
 	def lookup_length(self):
 		assert len(self.species) == len(self.abundance) == len(self.counts)
@@ -76,7 +82,7 @@ class Dataset():
 		# Normalize TPM/FPKM abundances
 		total_ab = math.fsum(self.abundance)
 		self.abundance = [100*v/total_ab for v in self.abundance]
-		assert math.fsum(self.abundance) == 100
+		assert round(math.fsum(self.abundance)) == 100
 
 	def remove_matches(self, target):
 		self.set_by_array([r for r in self.get_array() if (r[0].find(target) == -1)])
@@ -158,10 +164,10 @@ def process_input(filename,size,fragmented=False):
 		raw_est.counts = [float(i) for i in zip(*input_data)[6]] # used when dataset abundances are given in raw counts
 		raw_est.abundance = [float(i) for i in zip(*input_data)[10]] # used when dataset abundances are given as percentages
 
-	elif filename.endswith('expression.txt'): # kallisto file
+	elif filename.endswith('abundance.txt') or filename.endswith('expression.txt'): # kallisto file
 		raw_est.species = zip(*input_data)[0] # kallisto species names are in first column
-		raw_est.counts = [float(i) for i in zip(*input_data)[4]]
-		raw_est.abundance = [float(i) for i in zip(*input_data)[3]]
+		raw_est.counts = [float(i) for i in zip(*input_data)[3]]
+		raw_est.abundance = [float(i) for i in zip(*input_data)[4]]
 
 	elif suffix == 'txt': #gasic file - NOT WORKING
 		raw_est.species = zip(*input_data)[0] # gasic species names are in first column
@@ -218,31 +224,8 @@ def calc_error(truth,est):
 	adjusted_abundance = numpy.zeros((truth.lookup_length()))
 
 	if truth.species != est.species:
-		if truth.lookup_length() == est.lookup_length():
-			adjusted_abundance = est.abundance
-			for ind,sp in enumerate(est.species):
-				if not (est.species[ind] == truth.species[ind] or est.species[ind] == truth.species[ind].partition(',')[0] or est.species[ind] == truth.species[ind].partition(',')[2]): # does not match species or a listed synonym
-					print "Error: species match not found between estimated {0} and actual {1}. Pretending they are the same for the sake of further calculations.".format(est.species[ind],truth.species[ind])
-		else:
-			print "Mapped samples don't match actual samples"
-			for ind,sp in enumerate(truth.species):
-				try:
-					sp_match = est.species.index(sp)
-				except ValueError: # most likely due to synonym
-					try:
-						sp_match = est.species.index(truth.species[ind].partition(',')[0])
-					except ValueError:
-						try:
-							sp_match = est.species.index(truth.species[ind].partition(',')[2])
-						except ValueError: # now we've really failed
-							print "Error: species match for {0} not found in estimated data. Setting abundance and counts to 0 for {0}.".format(sp)
-							adjusted_abundance[ind] = 0
-						else:
-							adjusted_abundance[ind] = est.abundance[sp_match]
-					else:
-						adjusted_abundance[ind] = est.abundance[sp_match]
-				else:
-					adjusted_abundance[ind] = est.abundance[sp_match]
+		for ind,sp in enumerate(truth.species):
+			adjusted_abundance[ind] = est.lookup_abundance(sp)
 	else:
 		adjusted_abundance = est.abundance
 
@@ -254,10 +237,14 @@ def calc_error(truth,est):
 
 	return diff,adjusted_abundance
 
-def graph_error(true_species, true_abundance, est_species, est_abundance,
-				adjusted_abundance, diff, expname, tier, showgraphs=True):
+def graph_error(truth, est, adjusted_abundance, diff, expname, tier, showgraphs=True):
 	# These imports are here so script can run on server w/out graphics
 	import lanthplot
+
+	true_species = truth.species
+	true_abundance = truth.abundance
+	est_species = est.species
+	est_abundance = est.abundance
 
 	true_sp = [x.replace('_',' ') for x in true_species]
 	all_species = list(set(est_species + true_species))
@@ -412,8 +399,8 @@ def main(argv=sys.argv):
 	print "Strain-level error:"
 	diff, adjusted_abundance = calc_error(truth,est)
 	if show_graphs:
-		graph_error(true_species, true_abundance, est_species, est_abundance,
-					adjusted_abundance, diff, exp_name, 'strain', fragmented)
+		graph_error(truth, est, adjusted_abundance, diff, exp_name, 'strain')
+
 	'''
 	print "Species-level error:"
 	diff, adjusted_abundance = calc_error(true_species_alone, true_species_ab,
