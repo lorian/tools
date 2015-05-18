@@ -8,7 +8,7 @@ import lanthpy
 
 def mkdir(dirname):
 	''' Make directory for species in clark folder '''
-	clark = os.path.expanduser(os.path.join('~/scratch/clark/',
+	clark = os.path.expanduser(os.path.join('~/scratch/clark/clark_genomes/Custom/',
 				lanthpy.genome_name_cleanup([dirname.partition(".")[0]])[0]))
 
 	if not os.path.exists(clark):
