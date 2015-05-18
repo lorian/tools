@@ -5,6 +5,15 @@ import string
 import os
 import sys
 
+def get_arg_w_spaces(args):
+	"""
+	Combine members of a list with spaces between, and strip any initial spaces
+	Meant to handle command line arguments with spaces
+	"""
+	arg = ' '.join(args)
+	arg.lstrip(" ")
+	return arg
+
 def get_script_path():
 	return os.path.dirname(os.path.realpath(sys.argv[0]))
 
@@ -25,12 +34,12 @@ def genome_name_cleanup(raw_names):
 		with open(os.path.join(get_script_path(),'M_biggenomenames.txt'), 'r') \
 					as biggenomefile:
 			big_genome = dict(csv.reader(biggenomefile))
-		clean_names = [big_genome[s.partition('|')[0]]
+		clean_names = [big_genome[s.partition('|')[0]]+"_"+s.partition('|')[2]
 						if s.partition('|')[0] in big_genome.keys()
 						else s for s in raw_names]
 
 	# Force clean_names to be lowercase, underscored, and without punctuation
-	bad_punct = "!\"#$%&'()*+,-./:;<=>@[\]^`{|}~" # string.punctuation w/no _ and ? (latter used to separate synonyms)
+	bad_punct = "!\"#$%&'()*+,-./:;<=>@[\]^`{}~" # string.punctuation w/no _ | and ? (latter used to separate synonyms)
 	clean_names = [s.lower().translate(string.maketrans("",""),bad_punct)
 					.replace(" ","_") for s in clean_names]
 
