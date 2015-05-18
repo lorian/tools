@@ -44,6 +44,13 @@ class Dataset():
 	def get_array(self):
 		return zip(self.species,self.abundance,self.counts)
 
+	def match_species(self, species): # handle synonyms
+		for sp in species.split('?'):
+			if sp in self.species:
+				return sp
+		print "Failed to find species to match {0}.".format(species)
+		return species
+
 	def lookup_abundance(self, species):
 		for sp in species.split('?'):
 			try:
@@ -63,7 +70,7 @@ class Dataset():
 		return 0
 
 	def lookup_length(self):
-		assert len(self.species) == len(self.abundance) == len(self.counts)
+		assert len(self.species) == len(self.abundance)
 		return len(self.species)
 
 	def clean_names(self):
@@ -92,8 +99,9 @@ class Dataset():
 def collapse_strains(strains,abundance): #NOT WORKING
 	""" Group strains together by species and genus """
 
+#	est_species_alone, est_species_ab, est_genus_alone, est_genus_ab = collapse_strains(est.species,est.abundance)
 	just_genus = [s.split("_")[0] for s in strains] # Note: ignores synonyms (probably safe)
-	just_species = [s.split("_")[0]+s.split("_")[1] if (s.count("_") > 1) else s for s in strains]
+	just_species = [s.split("_")[0] +"_"+ s.split("_")[1] if (s.count("_") > 1) else s for s in strains]
 	#just_species = [s.partition(',')[0].split("_")[0]+"_"+s.partition(',')[0].split("_")[1]+","+s.partition(',')[2].split("_")[0]+"_"+s.partition(',')[2].split("_")[1] if s.find(',') > -1 else s.split("_")[0]+"_"+s.split("_")[1] for s in strains]
 
 	species_combo = zip(just_species,abundance)
@@ -110,7 +118,10 @@ def collapse_strains(strains,abundance): #NOT WORKING
 
 	temp1,temp2 = zip(*sorted(species_dict.items()))
 	temp3,temp4 = zip(*sorted(genus_dict.items()))
-	return list(temp1),numpy.array(temp2),list(temp3),numpy.array(temp4)
+
+	j_species = Dataset(temp1,temp2)
+	j_genus = Dataset(temp3,temp4)
+	return j_species,j_genus
 
 def collapse_duplicates(raw_data):
 
@@ -120,7 +131,7 @@ def collapse_duplicates(raw_data):
 	set_ab = {}
 	set_co = {}
 	for sp,ab,co in dup_data:
-		name = sp.partition('_gi')[0] #the prepended strain name
+		name = sp.partition('_gi|')[0] #the prepended strain name
 		set_sp.setdefault(name,[]).append(sp)
 		set_ab.setdefault(name,[]).append(ab)
 		set_co.setdefault(name,[]).append(co)
@@ -133,15 +144,19 @@ def collapse_duplicates(raw_data):
 		if len(v) == 1: # just add record directly if it has no duplicates
 			undupe.add_record(k,set_ab[k][0],set_co[k][0])
 		else:
+			#print v
 			if all('chromosome' in dupe for dupe in v):
 				# Average abundances of separate chromosomes
 				undupe.add_record(k,math.fsum(set_ab[k])/len(v),math.fsum(set_co[k]))
 			elif all('complete' in dupe for dupe in v):
 				# Sum abundances of duplicate genomes
 				undupe.add_record(k,math.fsum(set_ab[k]),math.fsum(set_co[k]))
+			elif all('shotgun' in dupe for dupe in v):
+				# Average abundances of duplicate genomes
+				undupe.add_record(k,math.fsum(set_ab[k])/len(v),math.fsum(set_co[k]))
 			else:
-				# Should insert more complicated handling here; just summing for now
-				print "Possible error in {0}: neither chromosome nor genome?".format(k)
+				# Should insert more complicated handling here; just averaging for now
+				print "Possible error in {0}: neither chromosome nor genome?".format(v)
 				undupe.add_record(k,math.fsum(set_ab[k]),math.fsum(set_co[k]))
 
 	print "Number of entries after combining duplicates: {0}".format(undupe.lookup_length())
@@ -164,7 +179,16 @@ def process_input(filename,size,fragmented=False):
 		raw_est.counts = [float(i) for i in zip(*input_data)[6]] # used when dataset abundances are given in raw counts
 		raw_est.abundance = [float(i) for i in zip(*input_data)[10]] # used when dataset abundances are given as percentages
 
-	elif filename.endswith('abundance.txt') or filename.endswith('expression.txt'): # kallisto file
+	elif filename.endswith('.clark'): #not an actual output format, added manually
+		input_file = open(filename,'r')
+		input_csv = csv.reader(input_file, 'excel')
+		input_data = [r for r in input_csv]
+		input_data = input_data[1:] #remove header row
+		raw_est.species = zip(*input_data)[0] # species names are in first column
+		raw_est.counts = [float(i) for i in zip(*input_data)[1]]
+		raw_est.abundance = [float(i) for i in zip(*input_data)[2]]
+
+	elif filename.endswith('abundance.txt') or filename.endswith('expression.txt'): # kallisto file; added manually
 		raw_est.species = zip(*input_data)[0] # kallisto species names are in first column
 		raw_est.counts = [float(i) for i in zip(*input_data)[3]]
 		raw_est.abundance = [float(i) for i in zip(*input_data)[4]]
@@ -183,6 +207,7 @@ def process_input(filename,size,fragmented=False):
 	# Also want to remove ribosomal_RNA_gene, mitochondrion, and chloroplast
 
 	est = collapse_duplicates(raw_est)
+
 	est.convert_to_percentage()
 	est.sort_by_name()
 	est.set_threshold()
@@ -192,8 +217,9 @@ def process_input(filename,size,fragmented=False):
 			if est.abundance[i] != 0:
 				f.write('{0}\t{1}\n'.format(species,est.abundance[i]))
 
-	est_species_alone, est_species_ab, est_genus_alone, est_genus_ab = collapse_strains(est.species,est.abundance)
-	return est,est_species_alone,est_species_ab,est_genus_alone,est_genus_ab
+
+	j_species,j_genus = collapse_strains(est.species,est.abundance)
+	return est,j_species,j_genus
 
 def dataset_truth(dataset):
 	""" truth is in format |species|abundance|counts|genome size| where undefined counts is 0
@@ -214,9 +240,9 @@ def dataset_truth(dataset):
 	truth.clean_names()
 	#true_species = [s.lower().translate(string.maketrans("",""),bad_punct).replace(" ","_") for s in truth[0]]
 
-	true_species_alone,true_species_ab,true_genus_alone,true_genus_ab = collapse_strains(truth.species,truth.abundance)
+	true_j_species,true_j_genus = collapse_strains(truth.species,truth.abundance)
 
-	return truth,true_species_alone,true_species_ab,true_genus_alone,true_genus_ab
+	return truth,true_j_species,true_j_genus
 
 def calc_error(truth,est):
 	""" Calculate errors between true and estimated abundances """
@@ -243,11 +269,11 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, showgraphs=
 
 	true_species = truth.species
 	true_abundance = truth.abundance
-	est_species = est.species
 	est_abundance = est.abundance
+	est_species = est.species
 
-	true_sp = [x.replace('_',' ') for x in true_species]
-	all_species = list(set(est_species + true_species))
+	true_sp = [x.replace('_',' ') for x in truth.species]
+	all_species = list(set(est.species + [est.match_species(sp) for sp in truth.species]))
 
 	filtered_ab = [r for r in est_abundance if r != 0] # exclude 0's from est_abundance to get a more sensible mean
 	mean_ab = sum(filtered_ab)/len(filtered_ab)
@@ -393,29 +419,27 @@ def main(argv=sys.argv):
 	else:
 		show_graphs = True
 
-	truth,true_species_alone,true_species_ab,true_genus_alone,true_genus_ab = dataset_truth(dataset)
-	est,est_species_alone,est_species_ab,est_genus_alone,est_genus_ab = process_input(filename,truth.size)
+	truth,true_j_species,true_j_genus = dataset_truth(dataset)
+	est,est_j_species,est_j_genus = process_input(filename,truth.size)
 
 	print "Strain-level error:"
 	diff, adjusted_abundance = calc_error(truth,est)
+
+	all_species = list(set(est.species + truth.species))
+
 	if show_graphs:
 		graph_error(truth, est, adjusted_abundance, diff, exp_name, 'strain')
 
-	'''
 	print "Species-level error:"
-	diff, adjusted_abundance = calc_error(true_species_alone, true_species_ab,
-											est_species_alone, est_species_ab)
+	diff, adjusted_abundance = calc_error(true_j_species,est_j_species)
 	if show_graphs:
-		graph_error(true_species_alone, true_species_ab, est_species_alone,
-					est_species_ab, adjusted_abundance, diff, exp_name, 'species', fragmented)
+		graph_error(true_j_species, est_j_species, adjusted_abundance, diff, exp_name, 'species')
 
 	print "Genus-level error:"
-	diff, adjusted_abundance = calc_error(true_genus_alone, true_genus_ab,
-											est_genus_alone, est_genus_ab)
+	diff, adjusted_abundance = calc_error(true_j_genus,est_j_genus)
 	if show_graphs:
-		graph_error(true_genus_alone, true_genus_ab, est_genus_alone,
-					est_genus_ab, adjusted_abundance, diff, exp_name,'genus', fragmented)
-	'''
+		graph_error(true_j_genus, est_j_genus, adjusted_abundance, diff, exp_name, 'genus')
+
 
 if __name__ == "__main__":
     main()
