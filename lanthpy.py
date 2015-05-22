@@ -7,6 +7,7 @@ import sys
 
 def get_arg_w_spaces(args):
 	"""
+	Input sys.args[1:]
 	Combine members of a list with spaces between, and strip any initial spaces
 	Meant to handle command line arguments with spaces
 	"""
