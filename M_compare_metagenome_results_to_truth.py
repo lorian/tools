@@ -426,13 +426,11 @@ def main(argv=sys.argv):
 	truth,true_j_species,true_j_genus = dataset_truth(dataset)
 	est,est_j_species,est_j_genus = process_input(filename,truth.size)
 
-	print "Strain-level error:"
-	diff, adjusted_abundance = calc_error(truth,est)
-
-	all_species = list(set(est.species + truth.species))
-
-	if show_graphs:
-		graph_error(truth, est, adjusted_abundance, diff, exp_name, 'strain')
+	if not filename.endswith('.clark'): #not an actual output format, added manually
+		print "Strain-level error:"
+		diff, adjusted_abundance = calc_error(truth,est)
+		if show_graphs:
+			graph_error(truth, est, adjusted_abundance, diff, exp_name, 'strain')
 
 	print "Species-level error:"
 	diff, adjusted_abundance = calc_error(true_j_species,est_j_species)
