@@ -7,6 +7,7 @@ import sys
 
 def get_arg_w_spaces(args):
 	"""
+	Input sys.args[1:]
 	Combine members of a list with spaces between, and strip any initial spaces
 	Meant to handle command line arguments with spaces
 	"""
@@ -51,3 +52,9 @@ def genome_name_cleanup(raw_names):
 				clean_names[i] = i100
 	'''
 	return clean_names
+
+def single_name_cleanup(raw_name):
+	"""
+	Takes a single name, not a list, and cleans it up
+	"""
+	return genome_name_cleanup([raw_name])[0]

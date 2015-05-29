@@ -9,7 +9,7 @@ import lanthpy
 def mkdir(dirname):
 	''' Make directory for species in clark folder '''
 	clark = os.path.expanduser(os.path.join('~/scratch/clark/clark_genomes/Custom/',
-				lanthpy.genome_name_cleanup([dirname.partition(".")[0]])[0]))
+				lanthpy.single_name_cleanup(dirname.partition(".")[0])))
 
 	if not os.path.exists(clark):
 		print "Making directory {0}".format(clark)
@@ -19,7 +19,7 @@ def mkdir(dirname):
 
 def mkfile(filename,dirname):
 	single_fasta = open(os.path.join(dirname,
-			lanthpy.genome_name_cleanup([filename.rstrip().split('|')[-1]])[0] +".fna"), 'wt')
+			lanthpy.single_name_cleanup(filename.rstrip().split('|')[-1]) +".fna"), 'wt')
 	return single_fasta
 
 
