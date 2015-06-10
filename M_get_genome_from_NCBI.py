@@ -272,6 +272,7 @@ species_list = [
 	'Rhodopseudomonas palustris HaA2',
 	'Burkholderia ambifaria AMMD']
 
+'''
 tax_id_list = [ #NCBI taxonomy id
 	316058,
 	288000,
@@ -386,7 +387,7 @@ tax_id_list = [ #NCBI taxonomy id
 	272943,
 	387344,
 	322159]
-
+'''
 #i400
 
 i400_refseq_ID_list = [
@@ -1201,8 +1202,17 @@ def main(argv=sys.argv):
 						[species (optional)]
 	"""
 	if len(argv) > 1:
-		species_source = [argv[1]] # can enter single species for lookup on command line
-		print "Species to look up set as {0}".format(species_source)
+		incoming_arg = argv[1] # can enter single species for lookup on command line
+
+		if os.path.exists(incoming_arg):
+			print "Taking species to look up from {0}".format(incoming_arg)
+			species_source = []
+			with open(incoming_arg,'r') as sp_file:
+				for l in sp_file:
+					species_source.append(l)
+		else:
+			species_source = [incoming_arg]
+			print "Species to look up set as {0}".format(species_source)
 	else:
 		species_source = species_list
 
