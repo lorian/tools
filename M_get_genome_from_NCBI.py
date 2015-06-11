@@ -179,7 +179,7 @@ def get_genome(species_orig):
 
 			write_fasta(filename,fasta)
 
-	if not os.path.isfile(filename) or os.path.getsize(filename) < 200 or not has_genome(entries):
+	if not os.path.isfile(filename) or os.path.getsize(filename) < 200:
 		# complete failure
 		try:
 			print "UTTERLY FAILED: {0} {1}".format(refseq_ID_list[species_list.index(species_orig)],species)
