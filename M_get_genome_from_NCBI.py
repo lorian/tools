@@ -78,10 +78,6 @@ def get_genome(species_orig):
 	if os.path.isfile(filename) and os.path.getsize(filename) > 200: # don't re-run if file exists and is sensible size
 		return
 
-	'''
-	mfa = open(filename, 'w') # new fasta file for every species
-	mfa.seek(0)
-
 	if 'tax_ID_list' in globals():
 		# species ID
 		tax_id = tax_ID_list[species_list.index(species_orig)]
@@ -136,10 +132,11 @@ def get_genome(species_orig):
 	else:
 		fasta = parse_fasta(page_fasta,species)
 
+		mfa = open(filename, 'w') # new fasta file for every species
+		mfa.seek(0)
 		mfa.write(fasta) # write fastas to file
 		mfa.truncate()
 		mfa.close()
-	'''
 
 	# If above method doesn't work, get chr directly
 	if not os.path.isfile(filename) or os.path.getsize(filename) < 200:
