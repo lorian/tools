@@ -14,12 +14,14 @@ def has_genome(entries): #is there a complete genome in the list?
 			return True
 	return False
 
-def check_duplicate(entries,name): #do we already have this entry in our fasta?
+def check_duplicate(entries, name): #do we already have this entry in our fasta?
 	# first standardize chromosome names:
-	if (name in entries or name.find('whole genome') != -1
-						or (has_genome([name]) and has_genome(entries))):
-		#print "\tSkipping {0}".format(name)
+	if (name in entries or (has_genome([name]) and has_genome(entries))):
+		print "\tSkipping {0}".format(name)
 		return True #duplicate
+	# filter based on whole genome project
+	if name.find('whole genome') != -1 and name.find('project') != -1:
+		return True
 	return False #not a dupe
 
 def parse_line(line,species,entries):
@@ -31,10 +33,10 @@ def parse_line(line,species,entries):
 				return False
 			else: # valid new fasta that matches species
 				entries.append(name)
-				#print "Added {0}".format(name)
+				print "Added {0}".format(name)
 				return '>' + replace_spaces(species) + '_' + replace_spaces(line[1:]) #add name to beginning of ID line
 		else: # does not match species
-			#print "\tSkipping {0}".format(name)
+			print "\tSkipping {0}".format(name)
 			return False
 	elif line.startswith('<'): # xml instead of fasta
 		print "ERROR: FASTA EMPTY PAGE"
@@ -42,15 +44,41 @@ def parse_line(line,species,entries):
 
 	return line # normal line of fasta
 
+
+def write_fasta(filename,fasta):
+	mfa = open(filename, 'w') # overwrite fasta file
+	mfa.seek(0)
+	mfa.write(fasta) # write fastas to file
+	mfa.truncate()
+	mfa.close()
+
+
+def parse_fasta(page_fasta,species):
+	# copy fastas, trying to skip duplicates
+	fasta = ""
+	skip = False
+	entries = []
+	for line in page_fasta:
+		if not skip or line.startswith('>'): # if skip, avoid entire loop until next new record
+			skip = False
+			nl = parse_line(line,species,entries)
+			if nl:
+				fasta = fasta + nl
+			else:
+				skip = True
+
+	return fasta +'\n'
+
+
 def get_genome(species_orig):
 	species = species_orig.lower()
 	filename = species.replace(" ", "_").replace('/',"") + '.mfa'
+	print "Looking up {0}".format(species_orig)
 
 	if os.path.isfile(filename) and os.path.getsize(filename) > 200: # don't re-run if file exists and is sensible size
 		return
-#	else:
-#		print "SPECIES: {0}".format(species_orig)
 
+	'''
 	mfa = open(filename, 'w') # new fasta file for every species
 	mfa.seek(0)
 
@@ -102,32 +130,21 @@ def get_genome(species_orig):
 	# get fastas
 	try:
 		page_fasta = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&query_key={0}&WebEnv={1}&rettype=fasta&retmode=text'.format(query_key,web_env))
+		print "Got fasta page"
 	except:
-		pass
+		print "Failed to get fasta page"
 	else:
-		# copy fastas, trying to skip duplicates
-		fasta = ""
-		skip = False
-		entries = []
-		for line in page_fasta:
-			if not skip or line.startswith('>'): # if skip, avoid entire loop until next new record
-				skip = False
-				nl = parse_line(line,species,entries)
-				if nl:
-					fasta = fasta + nl
-				else:
-					skip = True
+		fasta = parse_fasta(page_fasta,species)
 
-		fasta = fasta + "\n"
 		mfa.write(fasta) # write fastas to file
-	mfa.truncate()
-	mfa.close()
+		mfa.truncate()
+		mfa.close()
+	'''
 
 	# If above method doesn't work, get chr directly
-	if not os.path.isfile(filename) or os.path.getsize(filename) < 200 or not has_genome(entries):
+	if not os.path.isfile(filename) or os.path.getsize(filename) < 200:
 		if 'refseq_ID_list' in globals():
 			chr_id = refseq_ID_list[species_list.index(species_orig)]
-			#print "Backup attempt:"
 
 			page_chr = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nuccore&term={0}'.format(chr_id))
 			genome_id = ""
@@ -140,31 +157,34 @@ def get_genome(species_orig):
 					genome_id = line[4:-6]
 
 			page_fasta = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={0}&rettype=fasta&retmode=text'.format(genome_id))
+			fasta = parse_fasta(page_fasta,species)
 
 			mfa = open(filename, 'w') # overwrite fasta file
 			mfa.seek(0)
-			fasta = ""
-			skip = False
-			entries = []
-			for line in page_fasta:
-				if not skip or line.startswith('>'): # if skip, avoid entire loop until next new record
-					skip = False
-					nl = parse_line(line,species,entries) # does the fasta entry match our species?
-					if nl:
-						fasta = fasta + nl
-					else:
-						skip = True
-			fasta = fasta + "\n"
 			mfa.write(fasta) # write fastas to file
 			mfa.truncate()
 			mfa.close()
+		else: # try looking up nucleotide directly
+			page_list = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi/?db=nuccore&term={0}'.format(urllib2.quote(species)))
+			id_list = []
+			for line in page_list:
+				line = string.replace(line,"\t","")
+				if line.startswith("<Id>"):
+					id_list.append(line[4:-6])
 
+			all_ids = ','.join(id_list)
+			fasta_page = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={0}&rettype=fasta&retmode=text'.format(all_ids))
+
+			fasta = parse_fasta(fasta_page,species)
+
+			write_fasta(filename,fasta)
+
+	if not os.path.isfile(filename) or os.path.getsize(filename) < 200 or not has_genome(entries):
 		# complete failure
-		else:
-			try:
-				print "UTTERLY FAILED: {0} {1}".format(refseq_ID_list[species_list.index(species_orig)],species)
-			except:
-				print "UTTERLY FAILED: {0}".format(species)
+		try:
+			print "UTTERLY FAILED: {0} {1}".format(refseq_ID_list[species_list.index(species_orig)],species)
+		except:
+			print "UTTERLY FAILED: {0}".format(species)
 
 
 species_list = [
@@ -1209,7 +1229,7 @@ def main(argv=sys.argv):
 			species_source = []
 			with open(incoming_arg,'r') as sp_file:
 				for l in sp_file:
-					species_source.append(l)
+					species_source.append(l.rstrip())
 		else:
 			species_source = [incoming_arg]
 			print "Species to look up set as {0}".format(species_source)
