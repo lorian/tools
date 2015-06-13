@@ -144,42 +144,43 @@ def get_genome(species_orig):
 		mfa.close()
 
 	# If above method doesn't work, get chr directly
-	if not os.path.isfile(filename) or os.path.getsize(filename) < 200:
-		if 'refseq_ID_list' in globals():
-			chr_id = refseq_ID_list[species_list.index(species_orig)]
+#	if not os.path.isfile(filename) or os.path.getsize(filename) < 200:
+	if 'refseq_ID_list' in globals():
+		chr_id = refseq_ID_list[species_list.index(species_orig)]
 
-			page_chr = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nuccore&term={0}'.format(chr_id))
-			genome_id = ""
-			for line in page_chr:
-				line = string.replace(line,"\t","")
-				if line.startswith("<Id>"):
-					if genome_id != "":
-						#print "Duplicate IDs for {0}; skipping.".format(species)
-						return
-					genome_id = line[4:-6]
+		page_chr = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nuccore&term={0}'.format(chr_id))
+		genome_id = ""
+		for line in page_chr:
+			line = string.replace(line,"\t","")
+			if line.startswith("<Id>"):
+				if genome_id != "":
+					#print "Duplicate IDs for {0}; skipping.".format(species)
+					return
+				genome_id = line[4:-6]
 
-			page_fasta = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={0}&rettype=fasta&retmode=text'.format(genome_id))
-			fasta = parse_fasta(page_fasta,species)
+		page_fasta = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={0}&rettype=fasta&retmode=text'.format(genome_id))
+		fasta = parse_fasta(page_fasta,species)
 
-			mfa = open(filename, 'w') # overwrite fasta file
-			mfa.seek(0)
-			mfa.write(fasta) # write fastas to file
-			mfa.truncate()
-			mfa.close()
-		else: # try looking up nucleotide directly
-			page_list = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi/?db=nuccore&term={0}'.format(urllib2.quote(species)))
-			id_list = []
-			for line in page_list:
-				line = string.replace(line,"\t","")
-				if line.startswith("<Id>"):
-					id_list.append(line[4:-6])
+		mfa = open(filename, 'w') # overwrite fasta file
+		mfa.seek(0)
+		mfa.write(fasta) # write fastas to file
+		mfa.truncate()
+		mfa.close()
+	else: # try looking up nucleotide directly
+		page_list = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi/?db=nuccore&term={0}'.format(urllib2.quote(species)))
+		id_list = []
+		for line in page_list:
+			line = string.replace(line,"\t","")
+			if line.startswith("<Id>"):
+				id_list.append(line[4:-6])
 
-			all_ids = ','.join(id_list)
-			fasta_page = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={0}&rettype=fasta&retmode=text'.format(all_ids))
+		all_ids = ','.join(id_list)
+		print all_ids
+		fasta_page = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={0}&rettype=fasta&retmode=text'.format(all_ids))
 
-			fasta = parse_fasta(fasta_page,species)
+		fasta = parse_fasta(fasta_page,species)
 
-			write_fasta(filename,fasta)
+		write_fasta(filename,fasta)
 
 	if not os.path.isfile(filename) or os.path.getsize(filename) < 200:
 		# complete failure
