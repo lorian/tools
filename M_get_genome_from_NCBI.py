@@ -17,11 +17,16 @@ def has_genome(entries): #is there a complete genome in the list?
 def check_duplicate(entries, name): #do we already have this entry in our fasta?
 	# first standardize chromosome names:
 	if (name in entries or (has_genome([name]) and has_genome(entries))):
-		print "\tSkipping {0}".format(name)
+		#print "\tSkipping {0}".format(name)
 		return True #duplicate
 	# filter based on whole genome project
 	if name.find('whole genome') != -1 and name.find('project') != -1:
 		return True
+	# filter out specific genes
+	if name.find('gene') != -1 or name.find('rna') != -1:
+		print "\tSkipping gene {0}".format(name)
+		return True
+	print "Adding {0}".format(name)
 	return False #not a dupe
 
 def parse_line(line,species,entries):
@@ -33,10 +38,10 @@ def parse_line(line,species,entries):
 				return False
 			else: # valid new fasta that matches species
 				entries.append(name)
-				print "Added {0}".format(name)
+				#print "Added {0}".format(name)
 				return '>' + replace_spaces(species) + '_' + replace_spaces(line[1:]) #add name to beginning of ID line
 		else: # does not match species
-			print "\tSkipping {0}".format(name)
+			#print "\tSkipping {0}".format(name)
 			return False
 	elif line.startswith('<'): # xml instead of fasta
 		print "ERROR: FASTA EMPTY PAGE"
@@ -73,7 +78,7 @@ def parse_fasta(page_fasta,species):
 def get_genome(species_orig):
 	species = species_orig.lower()
 	filename = species.replace(" ", "_").replace('/',"") + '.mfa'
-	print "Looking up {0}".format(species_orig)
+	print "\nLooking up {0}".format(species_orig)
 
 	if os.path.isfile(filename) and os.path.getsize(filename) > 200: # don't re-run if file exists and is sensible size
 		return
