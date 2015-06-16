@@ -86,10 +86,17 @@ class Dataset():
 		print "Number of non-zero abundances: {0}".format(self.lookup_length() - self.abundance.count(0))
 
 	def convert_to_percentage(self):
+		#adjust for unknowns if CLARK
+		unknown = self.lookup_abundance('unknown')
+
 		# Normalize TPM/FPKM abundances
 		total_ab = math.fsum(self.abundance)
-		self.abundance = [100*v/total_ab for v in self.abundance]
-		assert round(math.fsum(self.abundance)) == 100
+		self.abundance = [100*v/(total_ab - unknown) for v in self.abundance]
+
+		if unknown != 0: # prevent unknown from being normalized
+			self.abundance[self.species.index("unknown")] = unknown
+
+		assert round(math.fsum(self.abundance)) == 100 + round(unknown)
 
 	def remove_matches(self, target):
 		self.set_by_array([r for r in self.get_array() if (r[0].find(target) == -1)])
@@ -98,11 +105,11 @@ class Dataset():
 
 def collapse_strains(strains,abundance):
 	""" Group strains together by species and genus """
-			
+
 	just_genus = [s.split("_")[0] if (s.find('?') == -1) else (s.split("_")[0] +"?"+ s.partition('?')[2].split("_")[0]) for s in strains]
-	
+
 	just_species = [s if (s.count("_") <2) else s.split("_")[0] +"_"+ s.split("_")[1] if (s.find('?') == -1) else s.split("_")[0] +"_"+ s.split("_")[1] +"?"+ s.partition('?')[2].split("_")[0] +"_"+ s.partition('?')[2].split("_")[1] for s in strains]
-	
+
 	species_combo = zip(just_species,abundance)
 	species_dict = {}
 	for s,a in species_combo:
@@ -140,25 +147,32 @@ def collapse_duplicates(raw_data):
 	undupe = Dataset()
 
 	for k,v in set_sp.items():
+		print '\n'
+		for name in v:
+			print "{0}: {1}".format(name,raw_data.lookup_abundance(name))
+
 		if len(v) == 1: # just add record directly if it has no duplicates
 			undupe.add_record(k,set_ab[k][0],set_co[k][0])
 		else:
-			#print v
 			if all('chromosome' in dupe for dupe in v):
 				# Average abundances of separate chromosomes
 				undupe.add_record(k,math.fsum(set_ab[k])/len(v),math.fsum(set_co[k]))
 			elif all('complete' in dupe for dupe in v):
 				# Sum abundances of duplicate genomes
 				undupe.add_record(k,math.fsum(set_ab[k]),math.fsum(set_co[k]))
-			elif all('shotgun' in dupe for dupe in v):
-				# Average abundances of duplicate genomes
+			elif all('shotgun' in dupe for dupe in v) or all('clone_fragment' in dupe for dupe in v):
+				# Average abundances of fragmented genomes
 				undupe.add_record(k,math.fsum(set_ab[k])/len(v),math.fsum(set_co[k]))
 			else:
-				# Should insert more complicated handling here; just averaging for now
-				print "Possible error in {0}: neither chromosome nor genome?".format(v)
+				# Should insert more complicated handling here; just summing for now
+#				print "Cannot categorize all of"
+#				for name in v:
+#					print "{0}: {1}".format(name,raw_data.lookup_abundance(name))
 				undupe.add_record(k,math.fsum(set_ab[k]),math.fsum(set_co[k]))
 
 	print "Number of entries after combining duplicates: {0}".format(undupe.lookup_length())
+
+	pprint.pprint(undupe.get_array())
 
 	return undupe
 
@@ -203,6 +217,8 @@ def process_input(filename,size,fragmented=False):
 	print "Number of raw entries: {0}".format(raw_est.lookup_length())
 	raw_est.clean_names()
 	raw_est.remove_matches('plasmid')
+	raw_est.remove_matches('rna') # remove specific genes
+	raw_est.remove_matches('gene')
 	# Also want to remove ribosomal_RNA_gene, mitochondrion, and chloroplast
 
 	est = collapse_duplicates(raw_est)
@@ -233,11 +249,11 @@ def dataset_truth(dataset):
 	elif dataset == 'simLC':
 		truth.set_by_array([("Actinobacillus_succinogenes_130Z",0.49,252,2319663),("Alkalilimnicola_ehrlichii_MLHE-1?Alkalilimnicola_ehrlichei_MLHE-1",0.52,373,3275944),("Alkaliphillus_metalliredigenes_UNDEF",0.45,489,4929566),("Anabaena_variabilis_ATCC_29413",0.61,855,6365727),("Anaeromyxobacter_dehalogenans_2CP-C",0.53,584,5013479),("Arthrobacter_sp._FB24",0.55,570,4698945),("Azotobacter_vinelandii_AvOP",0.55,650,5365318),("Bacillus_cereus_NVH391-98",0.58,520,4087024),("Bifidobacterium_longum_DJO10A",0.55,288,2375792),("Bradyrhizobium_BTAi1,Bradyrhizobium_sp._BTAi1",5.08,9277,8264687),("Brevibacterium_linens_BL2",0.56,542,4367044),("Burkholderia_ambifaria_AMMD",0.58,955,7484988),("Burkholderia_cenocepacia_AU_1054",0.55,879,7279118),("Burkholderia_cenocepacia_HI2424",0.57,956,7537985),("Burkholderia_sp._sp.strain_383?Burkholderia_sp._383",1.35,1074,3587082),("Burkholderia_vietnamiensis_G4",0.61,992,7305582),("Burkholderia_xenovorans_LB40?Burkholderia_xenovorans_LB400",0.53,1149,9731140),("Caldicellulosiruptor_accharolyticus_UNDEF",0.56,367,2970275),("Chlorobium_limicola_DSMZ_245T",0.62,381,2763181),("Chlorobium_phaeobacteroides_DSM_266",0.52,359,3133902),("Chlorobium_vvibrioforme_f._thiosulfatophilum_DSMZ_265T",0.46,199,1966858),("Chloroflexus_aurantiacus_J-10-fl",0.58,679,5258541),("Chromohalobacter_salexigens_DSM3043",0.56,454,3696649),("Clostridium_beijerincki_NCIMB_8052",0.56,737,6000632),("Clostridium_thermocellum_ATCC_27405",0.54,461,3843301),("Crocosphaera_watsonii_WH_8501",0.59,812,6238478),("Cytophaga_hutchinsonii_ATCC_33406",5.27,5168,4433218),("Dechloromonas_aromatica_RCB",0.54,537,4501104),("Deinococcus_geothermalis_DSM_11300?Deinococcus_geothermalis_DSM11300",0.76,415,2467205),("Desulfitobacterium_hafniense_DCB-2",0.66,769,5279134),("Desulfovibrio_desulfuricans_G20",0.59,484,3730232),("Ehrlichia_canis_Jake",0.67,196,1315030),("Ehrlichia_chaffeensis_sapulpa",0.67,150,1005936),("Enterococcus_faecium_DO",0.6,359,2698137),("Exiguobacterium_UNDEF_255-15",0.56,377,3034136),("Ferroplasma_acidarmanus_fer1",0.55,238,1947953),("Frankia_sp._CcI3",0.54,645,5433628),("Frankia_sp._EAN1pec",0.56,1109,8982042),("Geobacter_metallireducens_GS-15",0.58,515,3997420),("Haemophilus_somnus_129PT",0.52,232,2007700),("Jannaschia_sp._CCS1",0.57,543,4317977),("Kineococcus_radiotolerans_SRS30216",0.54,566,4761183),("Lactobacillus_brevis_ATCC_367",0.35,177,2291220),("Lactobacillus_casei_ATCC_334",0.57,362,2895264),("Lactobacillus_delbrueckii_bulgaricus_ATCC_BAA-365",0.48,195,1856951),("Lactobacillus_gasseri_ATCC_33323",0.58,244,1894360),("Lactococcus_lactis_cremoris_SK11",0.56,301,2438589),("Leuconostoc_mesenteroides_mesenteroides_ATCC_8293",0.52,235,2038396),("Magnetococcus_sp._MC-1",0.48,504,4719581),("Marinobacter_aquaeolei_VT8",0.57,547,4326849),("Mesorhizobium_sp._BNC1",0.58,567,4412446),("Methanococcoides_burtonii_DSM6242",0.47,268,2575032),("Methanosarcina_barkeri_Fusaro",0.51,545,4837408),("Methanospirillum_hungatei_JF-1",0.55,429,3544738),("Methylobacillus_flagellatus_strain_KT",0.56,365,2971517),("Moorella_thermoacetica_ATCC_39073",1.16,674,2628784),("Nitrobacter_hamburgensis_UNDEF",0.65,630,4406967),("Nitrobacter_winogradskyi_Nb-255",0.57,427,3402093),("Nitrosococcus_oceani_UNDEF",0.53,409,3481691),("Nitrosomonas_eutropha_C71",0.53,314,2661057),("Nitrosospira_multiformis_ATCC_25196",0.54,378,3184243),("Nocardioides_sp._JS614",0.58,636,4985871),("Novosphingobium_aromaticivorans_DSM_12444_F199",0.66,520,3561584),("Oenococcus_oeni_PSU-1",0.46,182,1780517),("Paracoccus_denitrificans_PD1222",0.58,585,4582380),("Pediococcus_pentosaceus_ATCC_25745",0.54,217,1832387),("Pelobacter_carbinolicus_DSM_2380",0.6,489,3665893),("Pelobacter_propionicus_DSM_2379",0.57,508,4008000),("Pelodictyon_luteolum_UNDEF",0.48,250,2364842),("Pelodictyon_phaeoclathratiforme_BU-1_DSMZ_5477T",0.6,402,3018238),("Polaromonas_sp._JS666",0.64,733,5200264),("Prochlorococcus_marinus_str._MIT_9312",0.48,183,1709204),("Prochlorococcus_sp._NATL2A",0.62,253,1842899),("Prosthecochloris_aestuarii_SK413/DSMZ_271t",0.51,282,2512923),("Prosthecochloris_sp._BS1",0.8,483,2736403),("Pseudoalteromonas_atlantica_T6c",0.51,588,5187005),("Pseudomonas_fluorescens_PfO-1",0.51,730,6438405),("Pseudomonas_putida_F1",0.51,675,5959964),("Pseudomonas_syringae_B728a",0.55,746,6093698),("Psychrobacter_arcticum_273-4",0.56,327,2650701),("Psychrobacter_cryopegella_UNDEF",0.62,422,3059876),("Rhodobacter_sphaeroides_2.4.1",0.56,514,4131626),("Rhodoferax_ferrireducens_UNDEF",0.58,599,4712337),("Rhodopseudomonas_palustris_BisA53",0.52,636,5505494),("Rhodopseudomonas_palustris_BisB18",0.57,699,5513844),("Rhodopseudomonas_palustris_BisB5",0.53,575,4892717),("Rhodopseudomonas_palustris_HaA2",24.49,28861,5331656),("Rhodospirillum_rubrum_ATCC_11170",0.58,559,4352825),("Rubrobacter_xylanophilus_DSM_9941",0.57,409,3225748),("Saccharophagus_degradans_2-40",0.52,582,5057531),("Shewanella_amazonensis_SB2B",0.56,536,4306142),("Shewanella_baltica_OS155",0.55,621,5127376),("Shewanella_frigidimarina_NCMB400",0.51,551,4845257),("Shewanella_putefaciens_UNDEF",0.55,565,4659220),("Shewanella_sp._ANA-3",0.6,664,4972204),("Shewanella_sp._MR-7",0.54,568,4792610),("Shewanella_sp._PV-4",0.52,524,4602594),("Shewanella_sp._W3-18-1",0.51,533,4708380),("Silicibacter_sp._TM1040",0.66,469,3200938),("Sphingopyxis_alaskensis_RB2256",0.59,438,3345170),("Streptococcus_suis_89/1591",0.56,263,2143334),("Streptococcus_thermophilus_LMD-9",0.43,178,1856368),("Synechococcus_sp._PCC_7942_elongatus",0.53,316,2695903),("Syntrophobacter_fumaroxidans_MPOB",0.55,606,4990251),("Syntrophomonas_wolfei_Goettingen",0.48,314,2936195),("Thermoanaerobacter_ethanolicus_39E",0.6,315,2362816),("Thermobifida_fusca_YX",0.54,434,3642249),("Thiobacillus_denitrificans_ATCC_25259",0.61,395,2909809),("Thiomicrospira_crunogena_XCL-2",0.51,274,2427734),("Thiomicrospira_denitrificans_ATCC_338890?Thiomicrospira_denitrificans_ATCC_33889",0.57,277,2201561),("Trichodesmium_erythraeum_IMS101",0.57,977,7750108),("Xylella_fastidiosa_Ann-1",2.51,2836,5115560),("Xylella_fastidiosa_Dixon",1.04,601,2622359)])
 	elif dataset == 'hiseq':
-		truth.set_by_array([("Aeromonas hydrophila SSU",10,0,1),("Bacillus cereus VD118",10,0,1),("Bacteroides fragilis HMW615",10,0,1),("Mycobacterium abscessus 6G-0125-R",10,0,1),("Pelosinus fermentans A11",10,0,1),("Rhodobacter sphaeroides 2.410",10,0,1),("Staphylococcus aureus M0927",10,0,1),("Streptococcus pneumoniae TIGR4",10,0,1),("Vibrio cholerae CP1032(5)",10,0,1),("Xanthomonas axonopodis pv. Manihotis UA323",10,0,1)])
+		truth.set_by_array([("Aeromonas hydrophila SSU",10,0,4940000),("Bacillus cereus VD118",10,0,5686244),("Bacteroides fragilis HMW615?Bacteroides fragilis HMW 615",10,0,1),("Mycobacterium abscessus 6G-0125-R",10,0,1),("Pelosinus fermentans A11",10,0,1),("Rhodobacter sphaeroides 2.410?Rhodobacter sphaeroides 2.41",10,0,1),("Staphylococcus aureus M0927",10,0,1),("Streptococcus pneumoniae TIGR4",10,0,1),("Vibrio cholerae CP1032(5)",10,0,1),("Xanthomonas axonopodis pv. Manihotis UA323?Xanthomonas axonopodis pv. Manihotis str. UA323",10,0,1)])
 	elif dataset == 'miseq':
-		truth.set_by_array([("Bacillus cereus VD118",10,0,1),("Citrobacter freundii 47N",10,0,1),("Enterobacter cloacae",10,0,1),("Klebsiella pneumoniae NES14",10,0,1),("Mycobacterium abscessus 6G-0125-R",10,0,1),("Proteus vulgaris 66N",10,0,1),("Rhodobacter sphaeroides 2.410",10,0,1),("Staphylococcus aureus ST22",10,0,1),("Salmonella enterica Montevideo str. N19965",10,0,1),("Vibrio cholerae CP1032(5)",10,0,1)])
+		truth.set_by_array([("Bacillus cereus VD118",10,0,1),("Citrobacter freundii 47N",10,0,1),("Enterobacter cloacae",10,0,1),("Klebsiella pneumoniae NES14",10,0,1),("Mycobacterium abscessus 6G-0125-R",10,0,1),("Proteus vulgaris 66N",10,0,1),("Rhodobacter sphaeroides 2.410?Rhodobacter sphaeroides 2.41",10,0,1),("Staphylococcus aureus ST22",10,0,1),("Salmonella enterica Montevideo str. N19965",10,0,1),("Vibrio cholerae CP1032(5)",10,0,1)])
 	elif dataset == 'simHC20':
-		truth.set_by_array([("Alkaliphilus metalliredigens QYMF",5,500,1),("Bradyrhizobium sp. BTAi1",5,500,1),("Burkholderia cepacia AMMD",5,500,1),("Chelativorans sp. BNC1",5,500,1),("Clostridium thermocellum ATCC 27405",5,500,1),("Dechloromonas aromatica RCB",5,500,1),("Desulfitobacterium hafniense DCB-2",5,500,1),("Frankia sp. CcI3",5,500,1),("Geobacter metallireducens GS-15",5,500,1),("Marinobacter aquaeolei VT8",5,500,1),("Methanosarcina barkeri Fusaro, DSM 804",5,500,1),("Nitrobacter hamburgensis X14",5,500,1),("Nocardioides sp. JS614",5,500,1),("Polaromonas sp. JS666",5,500,1),("Pseudoalteromonas atlantica T6c",5,500,1),("Pseudomonas fluorescens Pf0-1",5,500,1),("Rhodobacter sphaeroides 2.4.1, ATCC BAA-808",5,500,1),("Shewanella sp. MR 7",5,500,1),("Syntrophobacter fumaroxidans MPOB",5,500,1)])
+		truth.set_by_array([("Alkaliphilus metalliredigens QYMF",5,500,1),("Bradyrhizobium sp. BTAi1",5,500,1),("Burkholderia cepacia AMMD?Burkholderia ambifaria AMMD",5,500,1),("Chelativorans sp. BNC1",5,500,1),("Clostridium thermocellum ATCC 27405",5,500,1),("Dechloromonas aromatica RCB",5,500,1),("Desulfitobacterium hafniense DCB-2",5,500,1),("Frankia sp. CcI3",5,500,1),("Geobacter metallireducens GS-15",5,500,1),("Marinobacter aquaeolei VT8",5,500,1),("Methanosarcina barkeri Fusaro, DSM 804?Methanosarcina barkeri str. Fusaro",5,500,1),("Nitrobacter hamburgensis X14",5,500,1),("Nocardioides sp. JS614",5,500,1),("Polaromonas sp. JS666",5,500,1),("Pseudoalteromonas atlantica T6c",5,500,1),("Pseudomonas fluorescens Pf0-1",5,500,1),("Rhodobacter sphaeroides 2.4.1, ATCC BAA-808?Rhodobacter sphaeroides 2.4.1",5,500,1),("Shewanella sp. MR 7?Shewanella sp. MR-7",5,500,1),("Syntrophobacter fumaroxidans MPOB",5,500,1)])
 	else:
 		print "Dataset not recognized. Input format is <filename> <dataset>."
 		return 0
@@ -262,7 +278,7 @@ def calc_error(truth,est):
 	diff = 100*(numpy.array(adjusted_abundance) - numpy.array(truth.abundance))/numpy.array(truth.abundance)
 	print "Average relative error: {0}".format(numpy.mean(abs(diff)))
 	diff_sq = [d*d/10000 for d in diff]
-	print "Relative root mean squared error: {0}".format(numpy.mean(diff_sq) ** (0.5) * 100)
+	print "Relative root mean squared error: {0}\n".format(numpy.mean(diff_sq) ** (0.5) * 100)
 
 	return diff,adjusted_abundance
 
@@ -277,9 +293,6 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, showgraphs=
 
 	true_sp = [x.replace('_',' ') for x in truth.species]
 	all_species = list(set(est.species + [est.match_species(sp) for sp in truth.species]))
-
-	filtered_ab = [r for r in est_abundance if r != 0] # exclude 0's from est_abundance to get a more sensible mean
-	mean_ab = sum(filtered_ab)/len(filtered_ab)
 
 	# pickle raw diffs for all species
 	all_est = [est_abundance[est_species.index(sp)] if sp in est_species else 0 for sp in all_species]
@@ -309,7 +322,13 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, showgraphs=
 
 	# graph abundances for all species, not just the true ones, if above mean
 	else:
-		print "Filtering out any estimated results under the mean abundance of {0}".format(mean_ab)
+		if est.lookup_length() - est.abundance.count(0) > len(true_species)*1.25:
+			filtered_ab = [r for r in est_abundance if r != 0] # exclude 0's from est_abundance to get a more sensible mean
+			mean_ab = sum(filtered_ab)/len(filtered_ab)
+			print "Filtering out any estimated results under the mean abundance of {0}".format(mean_ab)
+		else:
+			mean_ab = 0.01
+
 		present_true = []
 		present_est = []
 		present_species = []
@@ -342,6 +361,7 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, showgraphs=
 		lanthplot.plot(x, fil_est, color='red', label="Estimated")
 		lanthplot.plot_setup_post(save_file = expname +'_'+ tier +'_sigabundances.png')
 
+		'''
 		# sort based on name
 		all_filter = zip(present_sp,present_true,present_est)
 		all_filter.sort( key=lambda x: x[0],reverse=True )
@@ -354,7 +374,7 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, showgraphs=
 		lanthplot.plot(x, fil_true, color='blue', label="True")
 		lanthplot.plot(x, fil_est, color='red', label="Estimated")
 		lanthplot.plot_setup_post(save_file = expname +'_'+ tier +'_sigabundances2.png')
-
+		'''
 	# graph diffs
 	if len(all_species) == len(true_species):
 		diff_combo = zip(true_sp, diff)
@@ -404,20 +424,14 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, showgraphs=
 def main(argv=sys.argv):
 	"""
 	Command line usage: python M_compare_metagenomic_results_to_truth.py
-						[filename] [dataset] <fragmented data? (defaults to false)
-						<show graphs? (defaults to true)>
+						[filename] [dataset] <show graphs? (defaults to true)>
 	"""
 
 	filename = argv[1]
 	exp_name = filename.rpartition('_')[0] # will be used for graph-naming purposes
 	dataset = argv[2] #i100 or simLC
 
-	if len(argv) > 3 and (argv[3].lower() == 'true' or argv[3].lower() == 't'):
-		fragmented = True
-	else:
-		fragmented = False
-
-	if len(argv) > 4 and (argv[4].lower() == 'false' or argv[4].lower() == 'f'):
+	if len(argv) > 3 and (argv[3].lower() == 'false' or argv[3].lower() == 'f'):
 		show_graphs = False
 	else:
 		show_graphs = True
@@ -433,14 +447,16 @@ def main(argv=sys.argv):
 
 	print "Species-level error:"
 	diff, adjusted_abundance = calc_error(true_j_species,est_j_species)
+	'''
 	if show_graphs:
 		graph_error(true_j_species, est_j_species, adjusted_abundance, diff, exp_name, 'species')
-
+	'''
 	print "Genus-level error:"
 	diff, adjusted_abundance = calc_error(true_j_genus,est_j_genus)
+	'''
 	if show_graphs:
 		graph_error(true_j_genus, est_j_genus, adjusted_abundance, diff, exp_name, 'genus')
-
+	'''
 
 if __name__ == "__main__":
     main()
