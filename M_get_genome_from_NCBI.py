@@ -29,6 +29,14 @@ def check_duplicate(entries, name): #do we already have this entry in our fasta?
 	print "Adding {0}".format(name)
 	return False #not a dupe
 
+def find_best(entries):
+	print entries
+	if len(entries) == 1:
+		return entries
+	best = [r for r in entries if (r.find('plasmid') == -1)] # start off by adding all plasmids
+
+	return best
+
 def parse_line(line,species,entries):
 
 	if line.startswith('>'): # new fasta entry
@@ -72,7 +80,7 @@ def parse_fasta(page_fasta,species):
 			else:
 				skip = True
 
-	return fasta +'\n'
+	return entries, fasta +'\n'
 
 
 def get_genome(species_orig):
@@ -135,7 +143,7 @@ def get_genome(species_orig):
 	except:
 		print "Failed to get fasta page"
 	else:
-		fasta = parse_fasta(page_fasta,species)
+		entries, fasta = parse_fasta(page_fasta,species)
 
 		mfa = open(filename, 'w') # new fasta file for every species
 		mfa.seek(0)
@@ -159,7 +167,7 @@ def get_genome(species_orig):
 					genome_id = line[4:-6]
 
 			page_fasta = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={0}&rettype=fasta&retmode=text&retmax=100000'.format(genome_id))
-			fasta = parse_fasta(page_fasta,species)
+			entries, fasta = parse_fasta(page_fasta,species)
 
 			mfa = open(filename, 'w') # overwrite fasta file
 			mfa.seek(0)
@@ -178,7 +186,7 @@ def get_genome(species_orig):
 			print all_ids
 			fasta_page = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={0}&rettype=fasta&retmode=text&retmax=100000'.format(all_ids))
 
-			fasta = parse_fasta(fasta_page,species)
+			entries, fasta = parse_fasta(fasta_page,species)
 
 			write_fasta(filename,fasta)
 
