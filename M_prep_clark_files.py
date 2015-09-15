@@ -14,7 +14,6 @@ def mkdir(dirname):
 				lanthpy.single_name_cleanup(dirname.rpartition(".")[0])))
 
 	if not os.path.exists(clark):
-		print "Making directory {0}".format(clark)
 		os.makedirs(clark)
 
 	return clark
@@ -22,6 +21,8 @@ def mkdir(dirname):
 def mkfile(filename,dirname):
 	single_fasta = open(os.path.join(dirname,
 			lanthpy.single_name_cleanup(filename.split('|')[-1].strip('_')) +".fna"), 'wt')
+	# print as a list for tax_id lookup
+	print os.path.join(dirname, lanthpy.single_name_cleanup(filename.split('|')[-1].strip('_')) +".fna")
 	return single_fasta
 
 def main():
@@ -31,13 +32,11 @@ def main():
 	file_list = os.listdir(source_dir)
 	for f in file_list:
 		if f.endswith('fa') or f.endswith('fasta'):
-			print "File {}".format(f)
 			fdir = mkdir(f)
 
 			mfa = open(os.path.join(source_dir,f),'r')
 			for line in mfa:
 				if line[0] == '>': # fasta name
-					print "Creating new file for {}".format(line)
 					ffile = mkfile(line,fdir)
 					ffile.write(line)
 				else:
