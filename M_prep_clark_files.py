@@ -8,8 +8,10 @@ import lanthpy
 
 def mkdir(dirname):
 	''' Make directory for species in clark folder '''
-	clark = os.path.expanduser(os.path.join('~/scratch/clark/clark_genomes/Custom/',
-				lanthpy.single_name_cleanup(dirname.partition(".")[0])))
+	clark_dir = '~/scratch/clark/clark_genomes/Custom/'
+
+	clark = os.path.expanduser(os.path.join(clark_dir,
+				lanthpy.single_name_cleanup(dirname.rpartition(".")[0])))
 
 	if not os.path.exists(clark):
 		print "Making directory {0}".format(clark)
@@ -22,19 +24,20 @@ def mkfile(filename,dirname):
 			lanthpy.single_name_cleanup(filename.rstrip().split('|')[-1]) +".fna"), 'wt')
 	return single_fasta
 
-
 def main():
-	dirname = ' '.join(sys.argv[1:])
-	dirname.lstrip(" ")
+	source_dir = ' '.join(sys.argv[1:])
+	source_dir.lstrip(" ")
 
-	file_list = os.listdir(dirname)
+	file_list = os.listdir(source_dir)
 	for f in file_list:
 		if f.endswith('fa') or f.endswith('fasta'):
+			print "File {}".format(f)
 			fdir = mkdir(f)
 
-			mfa = open(os.path.join(dirname,f),'r')
+			mfa = open(os.path.join(source_dir,f),'r')
 			for line in mfa:
 				if line[0] == '>': # fasta name
+					print "Creating new file for {}".format(line)
 					ffile = mkfile(line,fdir)
 					ffile.write(line)
 				else:
