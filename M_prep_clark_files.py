@@ -21,12 +21,12 @@ def mkdir(dirname):
 
 def mkfile(filename,dirname):
 	single_fasta = open(os.path.join(dirname,
-			lanthpy.single_name_cleanup(filename.rstrip().split('|')[-1]) +".fna"), 'wt')
+			lanthpy.single_name_cleanup(filename.split('|')[-1].strip('_')) +".fna"), 'wt')
 	return single_fasta
 
 def main():
 	source_dir = ' '.join(sys.argv[1:])
-	source_dir.lstrip(" ")
+	source_dir.strip(" ")
 
 	file_list = os.listdir(source_dir)
 	for f in file_list:
