@@ -19,10 +19,13 @@ def mkdir(dirname):
 	return clark
 
 def mkfile(filename,dirname):
-	single_fasta = open(os.path.join(dirname,
-			lanthpy.single_name_cleanup(filename.split('|')[-1].strip('_')) +".fna"), 'wt')
+	new_filename = os.path.join(dirname, lanthpy.single_name_cleanup(filename.split('|')[-1].strip('_')) +".fna") # this names the file by strain
+	#new_filename = os.path.join(dirname, lanthpy.single_name_cleanup(filename.partition('gi|')[2].partition('|')[0] +".fna") # this names the file by GI
+
+	single_fasta = open(new_filename, 'wt')
+
 	# print as a list for tax_id lookup
-	print os.path.join(dirname, lanthpy.single_name_cleanup(filename.split('|')[-1].strip('_')) +".fna")
+	print new_filename
 	return single_fasta
 
 def main():
@@ -38,7 +41,7 @@ def main():
 			for line in mfa:
 				if line[0] == '>': # fasta name
 					ffile = mkfile(line,fdir)
-					ffile.write(line)
+					ffile.write('>gi|' + line.partition('gi|')) # remove the strain label at the front of the header
 				else:
 					ffile.write(line)
 
