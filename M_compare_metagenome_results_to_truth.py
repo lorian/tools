@@ -9,6 +9,7 @@ import math
 import pickle
 import lanthpy
 import pprint
+import itertools
 
 numpy.set_printoptions(precision=4)
 
@@ -69,9 +70,18 @@ class Dataset():
 		print "Failed to find counts for {0}.".format(species)
 		return 0
 
-	def lookup_length(self):
-		assert len(self.species) == len(self.abundance)
-		return len(self.species)
+	def lookup_size(self, species):
+		for sp in species.split('?'):
+			try:
+				return self.size[self.species.index(sp)]
+			except:
+				pass
+		#print "Failed to find size for {0}.".format(species)
+		return 0
+
+	def null_list(self):
+		# For use when one of the variables needs to be filled in
+		return [0]*len(self.species)
 
 	def clean_names(self):
 		self.species = lanthpy.genome_name_cleanup(self.species)
@@ -83,7 +93,7 @@ class Dataset():
 	def set_threshold(self, threshold=0.001):
 		# Set very low estimated abundances to 0
 		self.set_by_array([r if r[1] > threshold else (r[0],0,r[2]) for r in self.get_array()])
-		print "Number of non-zero abundances: {0}".format(self.lookup_length() - self.abundance.count(0))
+		print "Number of non-zero abundances: {0}".format(len(self.species) - self.abundance.count(0))
 
 	def convert_to_percentage(self):
 		#adjust for unknowns if CLARK
@@ -103,30 +113,43 @@ class Dataset():
 		print "Number of entries after removing {0}: {1}".format(target,len(self.species))
 
 
-def collapse_strains(strains,abundance):
+def genus_only(strains):
+	return [s.split("_")[0] if (s.find('?') == -1) else (s.split("_")[0] +"?"+ s.partition('?')[2].split("_")[0]) for s in strains]
+
+def species_only(strains):
+	return [s if (s.count("_") <2) else s.split("_")[0] +"_"+ s.split("_")[1] if (s.find('?') == -1) else s.split("_")[0] +"_"+ s.split("_")[1] +"?"+ s.partition('?')[2].split("_")[0] +"_"+ s.partition('?')[2].split("_")[1] for s in strains]
+
+def collapse_strains(strains):
 	""" Group strains together by species and genus """
+	just_genus = genus_only(strains.species)
+	just_species = species_only(strains.species)
 
-	just_genus = [s.split("_")[0] if (s.find('?') == -1) else (s.split("_")[0] +"?"+ s.partition('?')[2].split("_")[0]) for s in strains]
-
-	just_species = [s if (s.count("_") <2) else s.split("_")[0] +"_"+ s.split("_")[1] if (s.find('?') == -1) else s.split("_")[0] +"_"+ s.split("_")[1] +"?"+ s.partition('?')[2].split("_")[0] +"_"+ s.partition('?')[2].split("_")[1] for s in strains]
-
-	species_combo = zip(just_species,abundance)
+	species_combo = [x for x in zip(just_species,strains.abundance,strains.counts,strains.size)]
 	species_dict = {}
-	for s,a in species_combo:
-		species_dict.setdefault(s,0)
-		species_dict[s] = species_dict[s] + a
+	for s,a,c,z in species_combo:
+		if type(s) is str:
+			species_dict.setdefault(s,[0,0,0]) # list stores ab,counts,size in that order
+			species_dict[s][0] = species_dict[s][0] + a
+			species_dict[s][1] = species_dict[s][1] + c
+			species_dict[s][2] = species_dict[s][2] + z
+		else:
+			print "{} isn't a string, wtf? {} {} {}".format(s,a,c,z)
 
-	genus_combo = zip(just_genus,abundance)
+	genus_combo = [x for x in zip(just_genus,strains.abundance,strains.counts,strains.size)]
 	genus_dict = {}
-	for s,a in genus_combo:
-		genus_dict.setdefault(s,0)
-		genus_dict[s] = genus_dict[s] + a
+	for s,a,c,z in genus_combo:
+		if type(s) is str:
+			genus_dict.setdefault(s,[0,0,0]) # list stores ab,counts,size in that order
+			genus_dict[s][0] = genus_dict[s][0] + a
+			genus_dict[s][1] = genus_dict[s][1] + c
+			genus_dict[s][2] = genus_dict[s][2] + z
+		else:
+			print "{} isn't a string, wtf? {} {} {}".format(s,a,c,z)
 
-	temp1,temp2 = zip(*sorted(species_dict.items()))
-	temp3,temp4 = zip(*sorted(genus_dict.items()))
-
-	j_species = Dataset(temp1,temp2)
-	j_genus = Dataset(temp3,temp4)
+	a,c,z = zip(*species_dict.values())
+	j_species = Dataset(species_dict.keys(),a,c,z)
+	a,c,z = zip(*genus_dict.values())
+	j_genus = Dataset(genus_dict.keys(),a,c,z)
 	return j_species,j_genus
 
 def collapse_duplicates(raw_data):
@@ -136,45 +159,67 @@ def collapse_duplicates(raw_data):
 	set_sp = {}
 	set_ab = {}
 	set_co = {}
+	set_sz = {}
 	for sp,ab,co in dup_data:
 		name = sp.partition('_gi|')[0] #the prepended strain name
 		set_sp.setdefault(name,[]).append(sp)
 		set_ab.setdefault(name,[]).append(ab)
 		set_co.setdefault(name,[]).append(co)
+		set_sz.setdefault(name,[]).append(co)
 	assert(set_ab.keys() == set_co.keys() == set_sp.keys())
 
 	# New, clean dataset for data without duplicates
 	undupe = Dataset()
 
 	for k,v in set_sp.items():
-		print '\n'
-		for name in v:
-			print "{0}: {1}".format(name,raw_data.lookup_abundance(name))
-
 		if len(v) == 1: # just add record directly if it has no duplicates
-			undupe.add_record(k,set_ab[k][0],set_co[k][0])
+			undupe.add_record(k,set_ab[k][0],set_co[k][0],set_sz[k][0])
 		else:
 			if all('chromosome' in dupe for dupe in v):
 				# Average abundances of separate chromosomes
-				undupe.add_record(k,math.fsum(set_ab[k])/len(v),math.fsum(set_co[k]))
+				undupe.add_record(k,math.fsum(set_ab[k])/len(v),math.fsum(set_co[k]),math.fsum(set_sz[k]))
 			elif all('complete' in dupe for dupe in v):
 				# Sum abundances of duplicate genomes
-				undupe.add_record(k,math.fsum(set_ab[k]),math.fsum(set_co[k]))
+				undupe.add_record(k,math.fsum(set_ab[k]),math.fsum(set_co[k]),math.fsum(set_sz[k])/len(v))
 			elif all('shotgun' in dupe for dupe in v) or all('clone_fragment' in dupe for dupe in v):
 				# Average abundances of fragmented genomes
-				undupe.add_record(k,math.fsum(set_ab[k])/len(v),math.fsum(set_co[k]))
+				undupe.add_record(k,math.fsum(set_ab[k])/len(v),math.fsum(set_co[k]),math.fsum(set_sz[k]))
 			else:
 				# Should insert more complicated handling here; just summing for now
 #				print "Cannot categorize all of"
 #				for name in v:
 #					print "{0}: {1}".format(name,raw_data.lookup_abundance(name))
-				undupe.add_record(k,math.fsum(set_ab[k]),math.fsum(set_co[k]))
+				undupe.add_record(k,math.fsum(set_ab[k]),math.fsum(set_co[k]),math.fsum(set_sz[k]))
 
-	print "Number of entries after combining duplicates: {0}".format(undupe.lookup_length())
-
-	pprint.pprint(undupe.get_array())
+	print "Number of entries after combining duplicates: {0}".format(len(undupe.species))
 
 	return undupe
+
+def calc_raw_abundance(dataset):
+	""" Calculate abundance from raw counts, for programs that only give counts """
+	lengths_file = csv.reader(open('i100_martin_full_lengths.txt','r'), 'excel-tab') # need to parameterize this!
+	lengths_raw = [r for r in lengths_file]
+
+	lengths = Dataset()
+	lengths.species = zip(*lengths_raw)[0]
+	lengths.size = [int(x) for x in zip(*lengths_raw)[1]]
+	lengths.counts = lengths.null_list()
+	lengths.abundance = lengths.null_list()
+
+	lengths.clean_names()
+	lengths.remove_matches('virl')
+	lengths,x = collapse_strains(lengths)
+	print "Number of entries after combining duplicates: {}".format(len(lengths.species))
+
+	ab_data = Dataset()
+	for s in dataset.species:
+		if lengths.lookup_size(s) != 0:
+			ab_data.add_record(s,0,dataset.lookup_count(s),lengths.lookup_size(s))
+
+	ab_data.abundance = ab_data.counts/(numpy.sum(ab_data.counts)*numpy.array(ab_data.size))
+
+	return ab_data
+
 
 def process_input(filename,size,fragmented=False):
 	""" Pull species names, abundance, and counts out of input gasic or express file """
@@ -187,42 +232,49 @@ def process_input(filename,size,fragmented=False):
 	input_data = input_data[1:] #remove header row
 
 	raw_est = Dataset()
+	raw_est.size = size
 	if suffix == 'xprs': #express file
-		raw_est.species = zip(*input_data)[1] # express species names are in second column
-		raw_est.counts = [float(i) for i in zip(*input_data)[6]] # used when dataset abundances are given in raw counts
-		raw_est.abundance = [float(i) for i in zip(*input_data)[10]] # used when dataset abundances are given as percentages
+		raw_est.species = zip(*input_data)[1]
+		raw_est.counts = [float(i) for i in zip(*input_data)[6]]
+		raw_est.abundance = [float(i) for i in zip(*input_data)[10]]
+		raw_est.size = raw_est.null_list()
 
-	elif filename.endswith('.clark'): #not an actual output format, added manually
+	elif filename.endswith('.clark'): #clark abundance output; not an actual output format, added manually
 		input_file = open(filename,'r')
 		input_csv = csv.reader(input_file, 'excel')
 		input_data = [r for r in input_csv]
 		input_data = input_data[1:] #remove header row
-		raw_est.species = zip(*input_data)[0] # species names are in first column
+		raw_est.species = zip(*input_data)[0]
+		raw_est.clean_names()
 		raw_est.counts = [float(i) for i in zip(*input_data)[1]]
-		raw_est.abundance = [float(i) for i in zip(*input_data)[2]]
+		# clark's "abundances" don't account for length
+		#raw_est.abundance = raw_est.counts/(numpy.sum(raw_est.counts)*numpy.array(size))
+		raw_est.abundance = raw_est.counts/numpy.sum(raw_est.counts)
+		raw_est = calc_raw_abundance(raw_est)
+
+		#sys.exit()
 
 	elif filename.endswith('abundance.txt') or filename.endswith('expression.txt'): # kallisto file; added manually
-		raw_est.species = zip(*input_data)[0] # kallisto species names are in first column
+		raw_est.species = zip(*input_data)[0]
 		raw_est.counts = [float(i) for i in zip(*input_data)[3]]
 		raw_est.abundance = [float(i) for i in zip(*input_data)[4]]
+		raw_est.size = raw_est.null_list()
 
 	elif suffix == 'txt': #gasic file - NOT WORKING
-		raw_est.species = zip(*input_data)[0] # gasic species names are in first column
+		raw_est.species = zip(*input_data)[0]
 		raw_est.counts = [float(i) for i in zip(*input_data)[2]]
-		raw_est.abundance = raw_est.counts/(numpy.sum(raw_est.counts)*numpy.array(size)) # used when dataset abundances are given as percentages
+		raw_est.abundance = raw_est.counts/(numpy.sum(raw_est.counts)*numpy.array(size))
 
 	else:
 		print "File is not supported input type"
 
-	print "Number of raw entries: {0}".format(raw_est.lookup_length())
+	print "Number of raw entries: {0}".format(len(raw_est.species))
 	raw_est.clean_names()
 	raw_est.remove_matches('plasmid')
 	raw_est.remove_matches('rna') # remove specific genes
 	raw_est.remove_matches('gene')
 	# Also want to remove ribosomal_RNA_gene, mitochondrion, and chloroplast
-
 	est = collapse_duplicates(raw_est)
-
 	est.convert_to_percentage()
 	est.sort_by_name()
 	est.set_threshold()
@@ -233,7 +285,7 @@ def process_input(filename,size,fragmented=False):
 				f.write('{0}\t{1}\n'.format(species,est.abundance[i]))
 
 
-	j_species,j_genus = collapse_strains(est.species,est.abundance)
+	j_species,j_genus = collapse_strains(est)
 	return est,j_species,j_genus
 
 def dataset_truth(dataset):
@@ -259,14 +311,14 @@ def dataset_truth(dataset):
 		return 0
 
 	truth.clean_names()
-	true_j_species,true_j_genus = collapse_strains(truth.species,truth.abundance)
+	true_j_species,true_j_genus = collapse_strains(truth)
 
 	return truth,true_j_species,true_j_genus
 
 def calc_error(truth,est):
 	""" Calculate errors between true and estimated abundances """
 
-	adjusted_abundance = numpy.zeros((truth.lookup_length()))
+	adjusted_abundance = numpy.zeros(len(truth.species))
 
 	if truth.species != est.species:
 		for ind,sp in enumerate(truth.species):
@@ -322,7 +374,7 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, showgraphs=
 
 	# graph abundances for all species, not just the true ones, if above mean
 	else:
-		if est.lookup_length() - est.abundance.count(0) > len(true_species)*1.25:
+		if len(est.species) - est.abundance.count(0) > len(true_species)*1.25:
 			filtered_ab = [r for r in est_abundance if r != 0] # exclude 0's from est_abundance to get a more sensible mean
 			mean_ab = sum(filtered_ab)/len(filtered_ab)
 			print "Filtering out any estimated results under the mean abundance of {0}".format(mean_ab)

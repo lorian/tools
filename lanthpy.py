@@ -41,6 +41,7 @@ def genome_name_cleanup(raw_names):
 
 	# Force clean_names to be lowercase, underscored, and without punctuation
 	bad_punct = "!\"#$%&'()*+,-./:;<=>@[\]^`{}~" # string.punctuation w/no _ | and ? (latter used to separate synonyms)
+
 	clean_names = [s.lower().translate(string.maketrans("",""),bad_punct)
 					.strip().replace(" ","_") for s in clean_names] # strip will remove leading/trailing whitespaces to avoid "_name"
 
