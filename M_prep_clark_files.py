@@ -41,7 +41,7 @@ def main():
 			for line in mfa:
 				if line[0] == '>': # fasta name
 					ffile = mkfile(line,fdir)
-					ffile.write('>gi|' + line.partition('gi|')) # remove the strain label at the front of the header
+					ffile.write('>gi|' + line.partition('gi|')[2]) # remove the strain label at the front of the header
 				else:
 					ffile.write(line)
 
