@@ -23,7 +23,7 @@ def check_duplicate(entries, name): #do we already have this entry in our fasta?
 	if name.find('whole genome') != -1 and name.find('project') != -1:
 		return True
 	# filter out specific genes
-	if name.find('gene') != -1 or name.find('rna') != -1:
+	if name.find('gene ') != -1 or name.find('rna ') != -1: # space at end is to try to catch only words, not interior sequences
 		print "\tSkipping gene {0}".format(name)
 		return True
 	print "Adding {0}".format(name)
@@ -225,7 +225,7 @@ species_list = [
 	'Corynebacterium efficiens YS-314',
 	'Streptococcus pyogenes MGAS5005',
 	'Ochrobactrum anthropi ATCC 49188',
-	'Prochlorococcus marinus str. MIT 9313',
+	'Prochlorococcus marinus str. MIT9313', # removed space after MIT
 	'Rhodopseudomonas palustris CGA009',
 	'Corynebacterium urealyticum DSM 7109',
 	'Thermus thermophilus HB8',
@@ -273,16 +273,16 @@ species_list = [
 	'Pseudomonas stutzeri A1501',
 	'Treponema denticola ATCC 35405',
 	'Ralstonia eutropha H16',
-	'Mycobacterium avium subsp. paratuberculosis K-10',
+	'Mycobacterium avium subsp. paratuberculosis K10', # removed -
 	'Listeria welshimeri serovar 6b str. SLCC5334',
 	'Bacillus halodurans C-125',
 	'Geobacter sulfurreducens PCA',
 	'Chlamydophila pneumoniae CWL029',
-	'Francisella tularensis subsp. tularensis FSC198',
+	'Francisella tularensis subsp. tularensis FSC 198', # added space after FSC
 	'Staphylococcus aureus subsp. aureus NCTC 8325',
 	'Mycobacterium marinum M',
 	'Bacillus subtilis subsp. subtilis str. 168',
-	'Staphylococcus aureus subsp. aureus MRSA252',
+	'Staphylococcus aureus subsp. aureus MRSA 252', # added space after MRSA
 	'Sinorhizobium meliloti 1021',
 	'Streptococcus pyogenes MGAS315',
 	'Ureaplasma parvum serovar 3 str. ATCC 700970',
