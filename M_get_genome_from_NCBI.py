@@ -296,7 +296,7 @@ species_list = [
 	'Herpetosiphon aurantiacus DSM 785', #new strain name
 	'Buchnera aphidicola BCc', #new strain name
 	'Rhodococcus jostii RHA1', #new species name
-	'Escherichia coli str. K-12 substr. W3110', #added -
+	'Escherichia coli str. K12 substr. W3110',
 	'Escherichia coli str. K-12 substr. MG1655', #added -
 	'Chlorobium luteolum DSM 273', #new genus
 	'pseudomonas fluorescens pf0-1',
