@@ -1,5 +1,6 @@
 '''
 Copy multifastas into directory structure needed for CLARK
+Run from desired destination directory (/clark_genomes/Custom)
 '''
 
 import os
@@ -8,7 +9,8 @@ import lanthpy
 
 def mkdir(dirname):
 	''' Make directory for species in clark folder '''
-	clark_dir = '~/scratch/clark/clark_genomes/Custom/'
+	#clark_dir = '~/scratch/clark/clark_genomes/Custom/'
+	clark_dir = '.'
 
 	clark = os.path.expanduser(os.path.join(clark_dir,
 				lanthpy.single_name_cleanup(dirname.rpartition(".")[0])))
@@ -41,7 +43,7 @@ def main():
 			for line in mfa:
 				if line[0] == '>': # fasta name
 					ffile = mkfile(line,fdir)
-					ffile.write('>gi|' + line.partition('gi|')[2]) # remove the strain label at the front of the header
+					ffile.write('>gi|' + line.partition('gi|')[2]) # remove the strain label at the front of the header because clark is stupid
 				else:
 					ffile.write(line)
 
