@@ -58,35 +58,43 @@ class Dataset():
 		except:
 			for s in self.species:
 				if species in s:
-					print s
 					return s
 			print "Did not find {}".format(species)
 			return ''
 
 	def lookup_abundance(self, species):
-		for sp in species.split('?'):
-			try:
-				return self.abundance[self.species.index(sp)]
-			except:
-				pass
+		try:
+			return self.abundance[self.species.index(species)]
+		except:
+			for sp in species.split('?'):
+				try:
+					return self.abundance[self.species.index(sp)]
+				except:
+					pass
 		print "Failed to find abundance of {0}.".format(species)
 		return 0
 
 	def lookup_count(self, species):
-		for sp in species.split('?'):
-			try:
-				return self.counts[self.species.index(sp)]
-			except:
-				pass
+		try:
+			return self.counts[self.species.index(species)]
+		except:
+			for sp in species.split('?'):
+				try:
+					return self.counts[self.species.index(sp)]
+				except:
+					pass
 		print "Failed to find counts for {0}.".format(species)
 		return 0
 
 	def lookup_size(self, species):
-		for sp in species.split('?'):
-			try:
-				return self.size[self.species.index(sp)]
-			except:
-				pass
+		try:
+			return self.size[self.species.index(species)]
+		except:
+			for sp in species.split('?'):
+				try:
+					return self.size[self.species.index(sp)]
+				except:
+					pass
 		print "Failed to find size for {0}.".format(species)
 		return 0
 
@@ -258,15 +266,14 @@ def calc_raw_abundance(dataset):
 			sp = alt_dict[s]
 		else:
 			sp = s
-		if lengths.lookup_size(sp) != 0:
+		if truth.lookup_species(sp): # get the length from truth first, because it's going to be more accurate than the giant table of doom
+			sp = truth.lookup_species(sp)
+			ab_data.add_record(sp,0,dataset.lookup_count(s),truth.lookup_size(sp))
+		elif lengths.lookup_size(sp) != 0:
 			#print "{} is {}bp".format(s,lengths.lookup_size(sp))
 			ab_data.add_record(sp,0,dataset.lookup_count(s),lengths.lookup_size(sp))
 		else:
-			sp = truth.lookup_species(s)
-			if sp:
-				ab_data.add_record(sp,0,dataset.lookup_count(s),truth.lookup_size(sp))
-			else:
-				print "Did not find size of {}".format(s)
+			print "Did not find size of {}".format(s)
 		#print "{} {} {}".format(sp,ab_data.lookup_count(sp),ab_data.lookup_size(sp))
 	ab_data.abundance = ab_data.counts/(numpy.sum(ab_data.counts)*numpy.array(ab_data.size))
 
@@ -551,8 +558,8 @@ def main(argv=sys.argv):
 	if show_graphs:
 		graph_error(true_j_species, est_j_species, adjusted_abundance, diff, exp_name, 'species')
 	'''
-	#print "Genus-level error:"
-	#diff, adjusted_abundance = calc_error(true_j_genus,est_j_genus)
+	print "Genus-level error:"
+	diff, adjusted_abundance = calc_error(true_j_genus,est_j_genus)
 	'''
 	if show_graphs:
 		graph_error(true_j_genus, est_j_genus, adjusted_abundance, diff, exp_name, 'genus')
