@@ -14,7 +14,8 @@ for arg in iterarg:
 
 file_list = os.listdir(dirname)
 
-names = open(dirname + "_names.txt","w")
+print "Listing files in {}".format(dirname)
+names = open(dirname.strip('/') + "_names.txt","w")
 basenames = []
 for f in file_list:
 	if f.find('.mfa') != -1:
