@@ -125,6 +125,9 @@ class Dataset():
 
 		# Normalize TPM/FPKM abundances
 		total_ab = math.fsum(self.abundance)
+		if total_ab == 0: # give up if there are no abundances
+			return
+
 		self.abundance = [100*v/(total_ab - unknown) for v in self.abundance]
 
 		if unknown != 0: # prevent unknown from being normalized
@@ -136,9 +139,19 @@ class Dataset():
 		self.set_by_array([r for r in self.get_array() if (r[0].find(target) == -1)])
 		print "Number of entries after removing {0}: {1}".format(target,len(self.species))
 
+def collapse_synonyms(names): # note this won't correctly handle the case where there are matches for both halves of a synonym
+	for i,n in enumerate(names):
+		if n.find('?') != -1:
+			for sp in n.split('?'):
+				if sp in names: # does one of the synonyms already exist alone?
+					#print "replacing {} with {}".format(n,sp)
+					names[i] = sp
+	return names
 
 def genus_only(strains):
-	return [s.split("_")[0] if (s.find('?') == -1) else (s.split("_")[0] +"?"+ s.partition('?')[2].split("_")[0]) for s in strains]
+	new_strains = [s.split("_")[0] if (s.find('?') == -1) else (s.split("_")[0] +"?"+ s.partition('?')[2].split("_")[0]) for s in strains]
+	new_strains = collapse_synonyms(new_strains)
+	return new_strains
 
 def species_only_sub(s):
 	s = s.partition('_gi|')[0] # solve the "X_sp_gi|" problem
@@ -159,6 +172,7 @@ def species_only(strains):
 			new_strains.append('?'.join(split_strain))
 		else:
 			new_strains.append(species_only_sub(s))
+	new_strains = collapse_synonyms(new_strains)
 	return new_strains
 
 def collapse_strains(strains):
@@ -192,6 +206,7 @@ def collapse_strains(strains):
 	j_species = Dataset(species_dict.keys(),a,c,z)
 	a,c,z = zip(*genus_dict.values())
 	j_genus = Dataset(genus_dict.keys(),a,c,z)
+
 	return j_species,j_genus
 
 def collapse_duplicates(raw_data):
@@ -338,7 +353,8 @@ def process_input(filename,size,fragmented=False):
 		raw_est.species = zip(*input_table)[0]
 		raw_est.clean_names()
 		raw_est.counts = [float(i) for i in zip(*input_table)[1]]
-		raw_est = calc_raw_abundance(raw_est)
+		raw_est.abundance = list(numpy.zeros(len(raw_est.species)))
+		#raw_est = calc_raw_abundance(raw_est)
 
 	elif filename.endswith('abundance.txt') or filename.endswith('expression.txt'): # kallisto file; added manually
 		input_data = [r for r in input_csv]
@@ -406,9 +422,33 @@ def dataset_truth(dataset):
 
 	return truth,true_j_species,true_j_genus
 
-def calc_error(truth,est):
-	""" Calculate errors between true and estimated abundances """
+def calc_counts_error(truth,est):
+	adjusted_counts = numpy.zeros(len(truth.species))
 
+	if truth.species != est.species:
+		for ind,sp in enumerate(truth.species):
+			adjusted_counts[ind] = est.lookup_count(sp)
+	else:
+		adjusted_counts = est.counts
+
+	print "Total number of samples: {}".format(len(est.counts))
+	print "Total number of samples that match truth: {} ({} actually in truth)".format(len(adjusted_counts),len(truth.species))
+	diff = 100*(numpy.array(adjusted_counts) - numpy.array(truth.counts))/numpy.array(truth.counts)
+	print "Average relative error of assigned counts: {0}".format(numpy.mean(abs(diff)))
+	diff_sq = [d*d/10000 for d in diff]
+	print "Relative root mean squared error of assigned counts: {0}".format(numpy.mean(diff_sq) ** (0.5) * 100)
+
+	print "% counts assigned to non-truth taxa: {:.2%}".format((sum(est.counts) - sum(adjusted_counts))/sum(est.counts))
+	# normalize counts to only ones assigned to taxa that are really present:
+	normalization_factor = sum(truth.counts)/sum(adjusted_counts) # total counts/counts assigned to true taxa
+	normalized_counts = normalization_factor*adjusted_counts
+	diff_n = 100*(numpy.array(normalized_counts) - numpy.array(truth.counts))/numpy.array(truth.counts)
+	print "Average relative error of normalized (by a factor of {}) assigned counts: {}\n".format(normalization_factor,numpy.mean(abs(diff_n)))
+
+	return diff,adjusted_counts
+
+
+def calc_ab_error(truth,est):
 	adjusted_abundance = numpy.zeros(len(truth.species))
 
 	if truth.species != est.species:
@@ -417,13 +457,24 @@ def calc_error(truth,est):
 	else:
 		adjusted_abundance = est.abundance
 
-	print "Total number of samples: {0}".format(len(adjusted_abundance))
+	print "Total number of samples that match truth: {0}".format(len(adjusted_abundance))
 	diff = 100*(numpy.array(adjusted_abundance) - numpy.array(truth.abundance))/numpy.array(truth.abundance)
-	print "Average relative error: {0}".format(numpy.mean(abs(diff)))
+	print "Average relative error of estimated abundances: {0}".format(numpy.mean(abs(diff)))
 	diff_sq = [d*d/10000 for d in diff]
-	print "Relative root mean squared error: {0}\n".format(numpy.mean(diff_sq) ** (0.5) * 100)
+	print "Relative root mean squared error of estimated abundances: {0}\n".format(numpy.mean(diff_sq) ** (0.5) * 100)
 
 	return diff,adjusted_abundance
+
+def calc_error(truth,est):
+	""" Calculate errors between true and estimated abundances """
+	blank_abundance = [0.0]*len(est.abundance)
+
+	if blank_abundance == est.abundance: # use counts instead
+		diff,adjusted_abundance = calc_counts_error(truth,est)
+	else:
+		diff,adjusted_abundance = calc_ab_error(truth,est)
+
+	return diff, adjusted_abundance
 
 def graph_error(truth, est, adjusted_abundance, diff, expname, tier, showgraphs=True):
 	# These imports are here so script can run on server w/out graphics
