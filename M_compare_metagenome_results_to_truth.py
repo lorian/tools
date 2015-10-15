@@ -271,9 +271,6 @@ def calc_raw_abundance(dataset):
 	lengths.species = [s.partition('_gi')[0] for s in lengths.species] # chop off name details, leave only species
 	lengths_sp,lengths_ge = collapse_strains(lengths)
 	print "Number of entries in sizes: {}".format(len(lengths.species))
-#	print lengths_sp.species
-	print "\n"
-#	print dataset.species
 
 	'''
 	alt_dict = dict([('borrelia_bavariensis','borrelia_garinii'),
@@ -306,9 +303,11 @@ def calc_raw_abundance(dataset):
 			ab_data.add_record(sp,0,dataset.lookup_count(s),lengths_sp.lookup_size(sp))
 		else:
 			print "Did not find size of {}".format(s)
+			ab_data.add_record(s,0,dataset.lookup_count(s),0) # if size isn't found, won't be counted towards abundance but will count for counts
 			pass
 		#print "{} {} {}".format(sp,ab_data.lookup_count(sp),ab_data.lookup_size(sp))
 	ab_data.abundance = ab_data.counts/(numpy.sum(ab_data.counts)*numpy.array(ab_data.size))
+	ab_data.abundance = [0 if numpy.isinf(a) else a for a in ab_data.abundance] # replace inf's cause by divide-by-0 with 0
 
 	return ab_data
 
@@ -353,8 +352,8 @@ def process_input(filename,size,fragmented=False):
 		raw_est.species = zip(*input_table)[0]
 		raw_est.clean_names()
 		raw_est.counts = [float(i) for i in zip(*input_table)[1]]
-		raw_est.abundance = list(numpy.zeros(len(raw_est.species)))
-		#raw_est = calc_raw_abundance(raw_est)
+		print "Number of original entries before sizes: {0}".format(len(raw_est.species))
+		raw_est = calc_raw_abundance(raw_est)
 
 	elif filename.endswith('abundance.txt') or filename.endswith('expression.txt'): # kallisto file; added manually
 		input_data = [r for r in input_csv]
@@ -418,6 +417,7 @@ def dataset_truth(dataset):
 		return 0
 
 	truth.clean_names()
+	truth.sort_by_name()
 	true_j_species,true_j_genus = collapse_strains(truth)
 
 	return truth,true_j_species,true_j_genus
@@ -425,56 +425,44 @@ def dataset_truth(dataset):
 def calc_counts_error(truth,est):
 	adjusted_counts = numpy.zeros(len(truth.species))
 
-	if truth.species != est.species:
-		for ind,sp in enumerate(truth.species):
-			adjusted_counts[ind] = est.lookup_count(sp)
-	else:
-		adjusted_counts = est.counts
+	for ind,sp in enumerate(truth.species):
+		adjusted_counts[ind] = est.lookup_count(sp)
 
 	print "Total number of samples: {}".format(len(est.counts))
 	print "Total number of samples that match truth: {} ({} actually in truth)".format(len(adjusted_counts),len(truth.species))
+	if (sum(est.counts) - sum(adjusted_counts))/sum(est.counts) != 0:
+		print "% counts mis-assigned to non-truth taxa: {:.2f}%".format(100*(sum(est.counts) - sum(adjusted_counts))/sum(est.counts))
+	if (sum(truth.counts) - sum(est.counts))/sum(truth.counts) != 0:
+		print "% counts not assigned at all: {:.2f}% ({:.0f} counts)".format(100*(sum(truth.counts) - sum(est.counts))/sum(truth.counts),sum(est.counts))
+
 	diff = 100*(numpy.array(adjusted_counts) - numpy.array(truth.counts))/numpy.array(truth.counts)
-	print "Average relative error of assigned counts: {0}".format(numpy.mean(abs(diff)))
+	print "\nAverage relative error of assigned counts: {:.2f}%".format(numpy.mean(abs(diff)))
 	diff_sq = [d*d/10000 for d in diff]
-	print "Relative root mean squared error of assigned counts: {0}".format(numpy.mean(diff_sq) ** (0.5) * 100)
+	print "Relative root mean squared error of assigned counts: {:.2f}%".format(numpy.mean(diff_sq) ** (0.5) * 100)
 
-	print "% counts assigned to non-truth taxa: {:.2%}".format((sum(est.counts) - sum(adjusted_counts))/sum(est.counts))
-	# normalize counts to only ones assigned to taxa that are really present:
-	normalization_factor = sum(truth.counts)/sum(adjusted_counts) # total counts/counts assigned to true taxa
-	normalized_counts = normalization_factor*adjusted_counts
+	# normalize counts to only ones that mapped at all:
+	normalization_factor = sum(truth.counts)/sum(est.counts) # total counts/counts assigned
+	normalized_counts = numpy.array(adjusted_counts)*normalization_factor
 	diff_n = 100*(numpy.array(normalized_counts) - numpy.array(truth.counts))/numpy.array(truth.counts)
-	print "Average relative error of normalized (by a factor of {}) assigned counts: {}\n".format(normalization_factor,numpy.mean(abs(diff_n)))
+	print "Average relative error of normalized (by a factor of {:.2f}) assigned counts: {:.2f}%".format(normalization_factor,numpy.mean(abs(diff_n)))
+	diff_sq_n = [d*d/10000 for d in diff_n]
+	print "Relative root mean squared error of normalized assigned counts: {:.2f}%".format(numpy.mean(diff_sq_n) ** (0.5) * 100)
 
-	return diff,adjusted_counts
+	return diff_n,normalized_counts
 
 
 def calc_ab_error(truth,est):
 	adjusted_abundance = numpy.zeros(len(truth.species))
 
-	if truth.species != est.species:
-		for ind,sp in enumerate(truth.species):
-			adjusted_abundance[ind] = est.lookup_abundance(sp)
-	else:
-		adjusted_abundance = est.abundance
+	for ind,sp in enumerate(truth.species):
+		adjusted_abundance[ind] = est.lookup_abundance(sp)
 
-	print "Total number of samples that match truth: {0}".format(len(adjusted_abundance))
 	diff = 100*(numpy.array(adjusted_abundance) - numpy.array(truth.abundance))/numpy.array(truth.abundance)
-	print "Average relative error of estimated abundances: {0}".format(numpy.mean(abs(diff)))
+	print "Average relative error of estimated abundances: {:.2f}%".format(numpy.mean(abs(diff)))
 	diff_sq = [d*d/10000 for d in diff]
-	print "Relative root mean squared error of estimated abundances: {0}\n".format(numpy.mean(diff_sq) ** (0.5) * 100)
+	print "Relative root mean squared error of estimated abundances: {:.2f}%\n".format(numpy.mean(diff_sq) ** (0.5) * 100)
 
 	return diff,adjusted_abundance
-
-def calc_error(truth,est):
-	""" Calculate errors between true and estimated abundances """
-	blank_abundance = [0.0]*len(est.abundance)
-
-	if blank_abundance == est.abundance: # use counts instead
-		diff,adjusted_abundance = calc_counts_error(truth,est)
-	else:
-		diff,adjusted_abundance = calc_ab_error(truth,est)
-
-	return diff, adjusted_abundance
 
 def graph_error(truth, est, adjusted_abundance, diff, expname, tier, showgraphs=True):
 	# These imports are here so script can run on server w/out graphics
@@ -631,26 +619,48 @@ def main(argv=sys.argv):
 		show_graphs = True
 
 	truth,true_j_species,true_j_genus = dataset_truth(dataset)
-	est,est_j_species,est_j_genus = process_input(filename,truth.size)
+	estimated,est_j_species,est_j_genus = process_input(filename,truth.size)
 
-	if not filename.endswith('.clark'): #not an actual output format, added manually
-		print "Strain-level error:"
-		diff, adjusted_abundance = calc_error(truth,est)
+	dataset_pairs = [('strain',truth,estimated),('species',true_j_species,est_j_species),('genus',true_j_genus,est_j_genus)]
+
+	for label,true,est in dataset_pairs:
+		print "\n{}-level error:".format(label.capitalize())
+		print "\tCount-based accuracy:"
+		diff, adjusted_abundance = calc_counts_error(true,est)
 		if show_graphs:
-			graph_error(truth, est, adjusted_abundance, diff, exp_name, 'strain')
+			graph_error(true, est, adjusted_abundance, diff, exp_name, label)
+		print "\tAbundance-based accuracy:"
 
-	print "Species-level error:"
-	diff, adjusted_abundance = calc_error(true_j_species,est_j_species)
+		diff, adjusted_abundance = calc_ab_error(true,est)
+		if show_graphs:
+			graph_error(truth, est, adjusted_abundance, diff, exp_name, label)
+
+
+	'''
+	if not filename.endswith('.clark'): #not an actual output format, added manually
+
+	print "\nSpecies-level error:"
+	print "\tCount-based accuracy"
+	diff, adjusted_abundance = calc_counts_error(truth,est)
+	if show_graphs:
+		graph_error(truth, est, adjusted_abundance, diff, exp_name, 'strain')
+	print "\tAbundance-based accuracy"
+	diff, adjusted_abundance = calc_ab_error(truth,est)
+	if show_graphs:
+		graph_error(truth, est, adjusted_abundance, diff, exp_name, 'strain')
+
+
+	diff, adjusted_abundance = calc_counts_error(true_j_species,est_j_species)
 
 	if show_graphs:
 		graph_error(true_j_species, est_j_species, adjusted_abundance, diff, exp_name, 'species')
 
-	print "Genus-level error:"
-	diff, adjusted_abundance = calc_error(true_j_genus,est_j_genus)
+	print "\nGenus-level error:"
+	diff, adjusted_abundance = calc_counts_error(true_j_genus,est_j_genus)
 
 	if show_graphs:
 		graph_error(true_j_genus, est_j_genus, adjusted_abundance, diff, exp_name, 'genus')
-
+	'''
 
 if __name__ == "__main__":
     main()
