@@ -13,6 +13,7 @@ import itertools
 import collections
 import cPickle
 import os
+import seaborn
 
 numpy.set_printoptions(precision=4)
 
@@ -142,10 +143,15 @@ class Dataset():
 def collapse_synonyms(names): # note this won't correctly handle the case where there are matches for both halves of a synonym
 	for i,n in enumerate(names):
 		if n.find('?') != -1:
-			for sp in n.split('?'):
-				if sp in names: # does one of the synonyms already exist alone?
-					#print "replacing {} with {}".format(n,sp)
-					names[i] = sp
+			synonyms = n.split('?')
+			if len(set(synonyms)) <= 1: # all the synonyms are identical
+				names[i] = synonyms[0]
+			else:
+				for sp in synonyms:
+					if sp in names: # does one of the synonyms already exist alone?
+						#print "replacing {} with {}".format(n,sp)
+						names[i] = sp
+
 	return names
 
 def genus_only(strains):
@@ -158,6 +164,8 @@ def species_only_sub(s):
 	if s.count('_') <2:
 		return s
 	elif s.find('_sp_') != -1 or s.find('_sp._') != -1 or s.find('_species_') != -1:
+		return s.split("_")[0] +"_"+ s.split("_")[1] +"_"+ s.split("_")[2]
+	elif s.find('candidatus') != -1: # stupid fake specieses
 		return s.split("_")[0] +"_"+ s.split("_")[1] +"_"+ s.split("_")[2]
 	else:
 		return s.split("_")[0] +"_"+ s.split("_")[1]
@@ -272,17 +280,6 @@ def calc_raw_abundance(dataset):
 	lengths_sp,lengths_ge = collapse_strains(lengths)
 	print "Number of entries in sizes: {}".format(len(lengths.species))
 
-	'''
-	alt_dict = dict([('borrelia_bavariensis','borrelia_garinii'),
-				('candidatus_blochmannia_pennsylvanicus','candidatus_blochmannia'),
-				('chlamydia_pneumoniae','chlamydophila_pneumoniae'),
-				('cupriavidus_necator','ralstonia_eutropha'),
-				('histophilus_somni','haemophilus_somnus'),
-				('ruminiclostridium_thermocellum','clostridium_thermocellum'),
-				('cyanothece_sp_atcc_51142','cyanothece_sp_atcc'),
-	])
-	'''
-
 	ab_data = Dataset()
 	for s in dataset.species:
 		#if s in alt_dict.keys():
@@ -302,7 +299,7 @@ def calc_raw_abundance(dataset):
 			#print "{} is {}bp".format(s,lengths.lookup_size(sp))
 			ab_data.add_record(sp,0,dataset.lookup_count(s),lengths_sp.lookup_size(sp))
 		else:
-			print "Did not find size of {}".format(s)
+			#print "Did not find size of {}".format(s)
 			ab_data.add_record(s,0,dataset.lookup_count(s),0) # if size isn't found, won't be counted towards abundance but will count for counts
 			pass
 		#print "{} {} {}".format(sp,ab_data.lookup_count(sp),ab_data.lookup_size(sp))
@@ -321,19 +318,21 @@ def process_input(filename,size,fragmented=False):
 		input_table = cPickle.load(open(filename +'.p','rb'))
 	else:
 		input_file = open(filename,'r')
-		input_csv = csv.reader(input_file, 'excel-tab')
 
 	raw_est = Dataset()
 	raw_est.size = size
 	if suffix == 'xprs': #express file
+		input_csv = csv.reader(input_file, 'excel-tab')
 		input_data = [r for r in input_csv]
 		input_data = input_data[1:] #remove header row
 		raw_est.species = zip(*input_data)[1]
+		raw_est.clean_names()
 		raw_est.counts = [float(i) for i in zip(*input_data)[6]]
 		raw_est.abundance = [float(i) for i in zip(*input_data)[10]]
 		raw_est.size = raw_est.null_list()
 
 	elif filename.endswith('.clark'): #clark abundance output; not an actual output format, added manually
+		input_csv = csv.reader(input_file, 'excel')
 		input_data = [r for r in input_csv]
 		input_data = input_data[1:-1] #remove header row and unknown line at end
 		raw_est.species = zip(*input_data)[0]
@@ -344,6 +343,7 @@ def process_input(filename,size,fragmented=False):
 
 	elif filename.endswith('.kraken'): #kraken labeled output; not an actual output format, added manually
 		if not os.path.exists(filename +'.p'):
+			input_csv = csv.reader(input_file, 'excel-tab')
 			input_counts = collections.Counter()
 			for r in input_csv:
 				input_counts.update([r[1].rpartition(';')[2]])
@@ -356,17 +356,21 @@ def process_input(filename,size,fragmented=False):
 		raw_est = calc_raw_abundance(raw_est)
 
 	elif filename.endswith('abundance.txt') or filename.endswith('expression.txt'): # kallisto file; added manually
+		input_csv = csv.reader(input_file, 'excel-tab')
 		input_data = [r for r in input_csv]
 		input_data = input_data[1:] #remove header row
 		raw_est.species = zip(*input_data)[0]
+		raw_est.clean_names()
 		raw_est.counts = [float(i) for i in zip(*input_data)[3]]
 		raw_est.abundance = [float(i) for i in zip(*input_data)[4]]
 		raw_est.size = raw_est.null_list()
 
 	elif suffix == 'txt': #gasic file - NOT WORKING
+		input_csv = csv.reader(input_file, 'excel-tab')
 		input_data = [r for r in input_csv]
 		input_data = input_data[1:] #remove header row
 		raw_est.species = zip(*input_data)[0]
+		raw_est.clean_names()
 		raw_est.counts = [float(i) for i in zip(*input_data)[2]]
 		raw_est.abundance = raw_est.counts/(numpy.sum(raw_est.counts)*numpy.array(size))
 
@@ -375,7 +379,7 @@ def process_input(filename,size,fragmented=False):
 
 	print "Number of raw entries: {0}".format(len(raw_est.species))
 	raw_est.clean_names()
-	raw_est.remove_matches('plasmid')
+	#raw_est.remove_matches('plasmid') # simulated data assumes plasmids are present at 1x copy number, as wrong as that is
 	raw_est.remove_matches('rna') # remove specific genes
 	raw_est.remove_matches('gene_')
 	# Also want to remove ribosomal_RNA_gene, mitochondrion, and chloroplast
@@ -428,27 +432,27 @@ def calc_counts_error(truth,est):
 	for ind,sp in enumerate(truth.species):
 		adjusted_counts[ind] = est.lookup_count(sp)
 
-	print "Total number of samples: {}".format(len(est.counts))
-	print "Total number of samples that match truth: {} ({} actually in truth)".format(len(adjusted_counts),len(truth.species))
+	print "Total number of samples: ,{}".format(len(est.counts))
+	print "Total number of samples that match truth: ,{} ({} actually in truth)".format(len(adjusted_counts),len(truth.species))
 	if (sum(est.counts) - sum(adjusted_counts))/sum(est.counts) != 0:
-		print "% counts mis-assigned to non-truth taxa: {:.2f}%".format(100*(sum(est.counts) - sum(adjusted_counts))/sum(est.counts))
+		print "% counts mis-assigned to non-truth taxa: ,{:.2f}%".format(100*(sum(est.counts) - sum(adjusted_counts))/sum(est.counts))
+
 	if (sum(truth.counts) - sum(est.counts))/sum(truth.counts) != 0:
-		print "% counts not assigned at all: {:.2f}% ({:.0f} counts)".format(100*(sum(truth.counts) - sum(est.counts))/sum(truth.counts),sum(est.counts))
+		print "% counts not assigned at all: ,{:.2f}% ({:.0f} counts assigned)".format(100*(sum(truth.counts) - sum(est.counts))/sum(truth.counts),sum(est.counts))
 
 	diff = 100*(numpy.array(adjusted_counts) - numpy.array(truth.counts))/numpy.array(truth.counts)
-	print "\nAverage relative error of assigned counts: {:.2f}%".format(numpy.mean(abs(diff)))
+	print "\nAverage relative error of assigned counts: ,{:.2f}%".format(numpy.mean(abs(diff)))
 	diff_sq = [d*d/10000 for d in diff]
-	print "Relative root mean squared error of assigned counts: {:.2f}%".format(numpy.mean(diff_sq) ** (0.5) * 100)
+	print "Relative root mean squared error of assigned counts: ,{:.2f}%".format(numpy.mean(diff_sq) ** (0.5) * 100)
 
 	# normalize counts to only ones that mapped at all:
 	normalization_factor = sum(truth.counts)/sum(est.counts) # total counts/counts assigned
 	normalized_counts = numpy.array(adjusted_counts)*normalization_factor
 	diff_n = 100*(numpy.array(normalized_counts) - numpy.array(truth.counts))/numpy.array(truth.counts)
-	print "Average relative error of normalized (by a factor of {:.2f}) assigned counts: {:.2f}%".format(normalization_factor,numpy.mean(abs(diff_n)))
+	print "Average relative error of normalized (by a factor of ,{:.2f}) assigned counts: {:.2f}%".format(normalization_factor,numpy.mean(abs(diff_n)))
 	diff_sq_n = [d*d/10000 for d in diff_n]
-	print "Relative root mean squared error of normalized assigned counts: {:.2f}%".format(numpy.mean(diff_sq_n) ** (0.5) * 100)
-
-	return diff_n,normalized_counts
+	print "Relative root mean squared error of normalized assigned counts: ,{:.2f}%".format(numpy.mean(diff_sq_n) ** (0.5) * 100)
+	return diff_n,normalized_counts,normalization_factor
 
 
 def calc_ab_error(truth,est):
@@ -458,25 +462,32 @@ def calc_ab_error(truth,est):
 		adjusted_abundance[ind] = est.lookup_abundance(sp)
 
 	diff = 100*(numpy.array(adjusted_abundance) - numpy.array(truth.abundance))/numpy.array(truth.abundance)
-	print "Average relative error of estimated abundances: {:.2f}%".format(numpy.mean(abs(diff)))
+	print "Average relative error of estimated abundances: ,{:.2f}%".format(numpy.mean(abs(diff)))
 	diff_sq = [d*d/10000 for d in diff]
-	print "Relative root mean squared error of estimated abundances: {:.2f}%\n".format(numpy.mean(diff_sq) ** (0.5) * 100)
+	print "Relative root mean squared error of estimated abundances: ,{:.2f}%\n".format(numpy.mean(diff_sq) ** (0.5) * 100)
 
-	return diff,adjusted_abundance
+	return diff,adjusted_abundance,1
 
-def graph_error(truth, est, adjusted_abundance, diff, expname, tier, showgraphs=True):
+def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor, ab_or_count='abundance', showgraphs=True):
 	# These imports are here so script can run on server w/out graphics
 	import lanthplot
 
-	true_species = truth.species
-	true_abundance = truth.abundance
-	est_abundance = est.abundance
+	true_species = [est.match_species(sp) for sp in truth.species] # make all the versions of species names match the ones in est
+	print sorted(true_species)
 	est_species = est.species
+	if ab_or_count == 'abundance':
+		true_abundance = truth.abundance
+		est_abundance = est.abundance
+	elif ab_or_count == 'count':
+		true_abundance = truth.counts
+		est_abundance = list(numpy.array(est.counts)*norm_factor)
+	else:
+		print "Unknown argument passed: {}".format(ab_or_count)
+		return
 
-	true_sp = [x.replace('_',' ') for x in truth.species]
-	all_species = list(set(est.species + [est.match_species(sp) for sp in truth.species]))
-
-	# pickle raw diffs for all species
+	true_sp = [x.replace('_',' ') for x in true_species]
+	all_species = list(set(est.species + true_species))
+	print sorted(all_species)
 	all_est = [est_abundance[est_species.index(sp)] if sp in est_species else 0 for sp in all_species]
 	all_true = [true_abundance[true_species.index(sp)] if sp in true_species else 0 for sp in all_species]
 	all_diff = []
@@ -485,7 +496,7 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, showgraphs=
 			all_diff.append(100*(a - all_true[i]) / max(a,all_true[i]))
 		except ZeroDivisionError:
 			all_diff.append(0) # if both the estimate and the actual are 0, we're good here
-	pickle.dump(zip(all_species,all_diff),open(expname+"_diffs.pickle",'w'))
+	#pickle.dump(zip(all_species,all_diff),open(expname+"_diffs.pickle",'w'))
 
 	# graph true abundances
 	if len(all_species) == len(true_species):
@@ -496,18 +507,22 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, showgraphs=
 		ab_filter.sort( key=lambda x: x[1],reverse=True )
 		ab_species,ab_true,ab_adjusted = zip(*ab_filter)
 
-		lanthplot.plot_setup_pre("Graph of true {1}-level abundances in {0}"
-			.format(expname,tier), xlabels = ab_species, xticks = range(0,xmax), xrotation = -90)
+		lanthplot.plot_setup_pre("Graph of {}-level {}s in {}"
+			.format(tier,ab_or_count,expname), xlabels = ab_species, xticks = range(0,xmax), xrotation = -90)
 		lanthplot.plot(x, ab_true, color='blue', label='True')
 		lanthplot.plot(x,ab_adjusted, color='red', label='Estimated')
-		lanthplot.plot_setup_post(save_file = expname +'_'+ tier +'_abundances.png')
+		lanthplot.plot_setup_post(save_file = expname +'_'+ tier +'_'+ ab_or_count +'s.png')
 
 	# graph abundances for all species, not just the true ones, if above mean
 	else:
-		if len(est.species) - est.abundance.count(0) > len(true_species)*1.25:
-			filtered_ab = [r for r in est_abundance if r != 0] # exclude 0's from est_abundance to get a more sensible mean
-			mean_ab = sum(filtered_ab)/len(filtered_ab)
-			print "Filtering out any estimated results under the mean abundance of {0}".format(mean_ab)
+		if len(est.species) - est_abundance.count(0) > len(true_species)*1.25:
+			if ab_or_count == 'abundance':
+				filtered_ab = [r for r in est_abundance if r != 0] # exclude 0's from est_abundance to get a more sensible mean
+				mean_ab = sum(filtered_ab)/len(filtered_ab)
+				print "Filtering out any estimated results under the mean {} of {}".format(mean_ab,ab_or_count)
+			else:
+				mean_ab = min(true_abundance)/10 #10% of lowest actual count in truth
+				print "Filtering out any estimated results under {} {}s".format(mean_ab,ab_or_count)
 		else:
 			mean_ab = 0.01
 
@@ -536,12 +551,12 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, showgraphs=
 		fil_sp,fil_true,fil_est = zip(*all_filter)
 
 		lanthplot.plot_setup_pre(
-			"Graph of all above-average estimated abundances in {0} at {1}-level"
-			.format(expname,tier), xlabels = fil_sp, xticks = range(0,xmax),
+			"Graph of all above-average estimated {}s in {} at {}-level"
+			.format(ab_or_count,expname,tier), xlabels = fil_sp, xticks = range(0,xmax),
 			xrotation = -90)
 		lanthplot.plot(x, fil_true, color='blue', label="True")
 		lanthplot.plot(x, fil_est, color='red', label="Estimated")
-		lanthplot.plot_setup_post(save_file = expname +'_'+ tier +'_sigabundances.png')
+		lanthplot.plot_setup_post(save_file = expname +'_'+ tier +'_sig'+ ab_or_count +'s.png')
 
 		'''
 		# sort based on name
@@ -559,6 +574,7 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, showgraphs=
 		'''
 	# graph diffs
 	if len(all_species) == len(true_species):
+
 		diff_combo = zip(true_sp, diff)
 		diff_filter = diff_combo
 		diff_filter.sort( key=lambda x: x[1], reverse=True )
@@ -571,8 +587,8 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, showgraphs=
 			if xmax < 200:
 				x = numpy.array(range(0, xmax))
 				lanthplot.plot_setup_pre(
-					"Graph of % error in present species in {0}-level {1}"
-					.format(tier, expname), xlabels = diff_species, xticks = range(0,xmax),
+					"Graph of % {} error in present species in {}-level {}"
+					.format(ab_or_count, tier, expname), xlabels = diff_species, xticks = range(0,xmax),
 					xrotation = -90)
 				lanthplot.plot(x, diff_ab, plot_type='bar', width=0.8, color='purple')
 				lanthplot.plot_setup_post(save_file = expname +'_'+ tier +'_errors.png',legend=False)
@@ -595,8 +611,8 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, showgraphs=
 				x = numpy.array(range(0,xmax))
 
 				lanthplot.plot_setup_pre(
-					"Graph of % error in all true or estimated species in {0}-level {1}"
-					.format(tier, expname), xlabels = diff_species, xticks = range(0,xmax),
+					"Graph of % {} error in all true or estimated species in {}-level {}"
+					.format(ab_or_count, tier, expname), xlabels = diff_species, xticks = range(0,xmax),
 					xrotation = -90)
 				lanthplot.plot(x, diff_ab, plot_type='bar', width=0.8, color='purple')
 				lanthplot.plot_setup_post(save_file = expname +'_'+ tier +'_allerrors.png',legend=False)
@@ -621,46 +637,25 @@ def main(argv=sys.argv):
 	truth,true_j_species,true_j_genus = dataset_truth(dataset)
 	estimated,est_j_species,est_j_genus = process_input(filename,truth.size)
 
-	dataset_pairs = [('strain',truth,estimated),('species',true_j_species,est_j_species),('genus',true_j_genus,est_j_genus)]
+	if filename.endswith('.clark'): # clark doesn't do strain-level assignment
+		dataset_pairs = [('species',true_j_species,est_j_species),('genus',true_j_genus,est_j_genus)]
+	else:
+		dataset_pairs = [('strain',truth,estimated),('species',true_j_species,est_j_species),('genus',true_j_genus,est_j_genus)]
 
+	#dataset_pairs = [('strain',truth,estimated)]
+	dataset_pairs = [('genus',true_j_genus,est_j_genus)]
 	for label,true,est in dataset_pairs:
 		print "\n{}-level error:".format(label.capitalize())
 		print "\tCount-based accuracy:"
-		diff, adjusted_abundance = calc_counts_error(true,est)
+		diff, adjusted_abundance, norm_factor = calc_counts_error(true,est)
+		print sum(adjusted_abundance)
 		if show_graphs:
-			graph_error(true, est, adjusted_abundance, diff, exp_name, label)
+			graph_error(true, est, adjusted_abundance, diff, exp_name, label, norm_factor, 'count')
 		print "\tAbundance-based accuracy:"
 
-		diff, adjusted_abundance = calc_ab_error(true,est)
-		if show_graphs:
-			graph_error(truth, est, adjusted_abundance, diff, exp_name, label)
-
-
-	'''
-	if not filename.endswith('.clark'): #not an actual output format, added manually
-
-	print "\nSpecies-level error:"
-	print "\tCount-based accuracy"
-	diff, adjusted_abundance = calc_counts_error(truth,est)
-	if show_graphs:
-		graph_error(truth, est, adjusted_abundance, diff, exp_name, 'strain')
-	print "\tAbundance-based accuracy"
-	diff, adjusted_abundance = calc_ab_error(truth,est)
-	if show_graphs:
-		graph_error(truth, est, adjusted_abundance, diff, exp_name, 'strain')
-
-
-	diff, adjusted_abundance = calc_counts_error(true_j_species,est_j_species)
-
-	if show_graphs:
-		graph_error(true_j_species, est_j_species, adjusted_abundance, diff, exp_name, 'species')
-
-	print "\nGenus-level error:"
-	diff, adjusted_abundance = calc_counts_error(true_j_genus,est_j_genus)
-
-	if show_graphs:
-		graph_error(true_j_genus, est_j_genus, adjusted_abundance, diff, exp_name, 'genus')
-	'''
+		diff, adjusted_abundance, norm_factor = calc_ab_error(true,est)
+		#if show_graphs:
+		#	graph_error(truth, est, adjusted_abundance, diff, exp_name, label, 1, 'abundance')
 
 if __name__ == "__main__":
     main()

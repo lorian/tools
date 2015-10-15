@@ -20,7 +20,7 @@
 "candidatus_blochmannia_pennsylvanicus_str._bpen",0.9129394805,53307,791654
 "chlamydia_trachomatis_l2b/uch-1/proctitis",0.9593251688,73440,1038863
 "chlamydophila_caviae_gpic",0.8711493582,75947,1181357
-"chlamydophila_pneumoniae_cwl029",0.8810983686,79974,1230230
+"chlamydia_pneumoniae_cw1029?chlamydophila_pneumoniae_cwl029",0.8810983686,79974,1230230
 "chlorobium_luteolum_dsm_273?pelodictyon_luteolum_dsm_273",0.9264853736,161547,2364842
 "chromobacterium_violaceum_atcc_12472",0.9624326898,336880,4751080
 "clostridium_beijerinckii_ncimb_8052?Ruminiclostridium_beijerinckii_ncimb_8052",0.9656484821,426880,6000632
@@ -69,7 +69,7 @@
 "pseudomonas_stutzeri_a1501",0.8912213302,300267,4567418
 "psychrobacter_cryohalolentis_k5",2.2276838861,424721,3101098
 "psychromonas_ingrahamii_37",0.8691118092,292400,4559598
-"ralstonia_eutropha_h16?Cupriavidus necator h16",0.8885605469,29627,3364647
+"ralstonia_eutropha_h16?Cupriavidus necator h16",0.8885605469,29627,452156
 "rhodococcus_jostii_rha1?rhodococcus_sp._rha1",0.8835041681,632428,9702740
 "rhodopseudomonas_palustris_bisa53",1.0715558086,433120,5505494
 "rhodopseudomonas_palustris_cga009",1.0056581462,404641,5476069
