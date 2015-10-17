@@ -148,14 +148,12 @@ def collapse_synonyms(names): # note this won't correctly handle the case where 
 				names[i] = synonyms[0]
 			else:
 				for sp in synonyms:
-					if sp in names: # does one of the synonyms already exist alone?
-						#print "replacing {} with {}".format(n,sp)
-						names[i] = sp
-
+					while sp in names: # does one of the synonyms already exist alone?
+						names[names.index(sp)] = n # expand match to include the apparent synonym
 	return names
 
 def genus_only(strains):
-	new_strains = [s.split("_")[0] if (s.find('?') == -1) else (s.split("_")[0] +"?"+ s.partition('?')[2].split("_")[0]) for s in strains]
+	new_strains = [s.split("_")[0] if (s.find('?') == -1) else (s.partition('?')[0].split("_")[0] +"?"+ s.partition('?')[2].split("_")[0]) for s in strains]
 	new_strains = collapse_synonyms(new_strains)
 	return new_strains
 
@@ -180,7 +178,7 @@ def species_only(strains):
 			new_strains.append('?'.join(split_strain))
 		else:
 			new_strains.append(species_only_sub(s))
-	new_strains = collapse_synonyms(new_strains)
+	#new_strains = collapse_synonyms(new_strains)
 	return new_strains
 
 def collapse_strains(strains):
@@ -188,6 +186,7 @@ def collapse_strains(strains):
 	just_genus = genus_only(strains.species)
 	just_species = species_only(strains.species)
 
+	#print sorted(strains.species)
 	species_combo = [x for x in zip(just_species,strains.abundance,strains.counts,strains.size)]
 	species_dict = {}
 	for s,a,c,z in species_combo:
@@ -262,13 +261,14 @@ def collapse_duplicates(raw_data):
 
 def calc_raw_abundance(dataset):
 	""" Calculate abundance from raw counts, for programs that only give counts """
-	lengths_file = csv.reader(open('i100_martin_full_lengths.txt','r'), 'excel-tab') # need to parameterize this!
-	lengths_raw = [r for r in lengths_file]
-	lengths = Dataset()
+	#lengths_file = csv.reader(open('i100_martin_full_lengths.txt','r'), 'excel-tab') # need to parameterize this!
+	#lengths_raw = [r for r in lengths_file]
+	#lengths = Dataset()
 
 	truth,x,y = dataset_truth('i100')
 	truth_sp,truth_ge = collapse_strains(truth)
 
+	'''
 	lengths.species = zip(*lengths_raw)[0]
 	lengths.size = [int(x) for x in zip(*lengths_raw)[1]]
 	lengths.counts = lengths.null_list()
@@ -279,12 +279,10 @@ def calc_raw_abundance(dataset):
 	lengths.species = [s.partition('_gi')[0] for s in lengths.species] # chop off name details, leave only species
 	lengths_sp,lengths_ge = collapse_strains(lengths)
 	print "Number of entries in sizes: {}".format(len(lengths.species))
+	'''
 
 	ab_data = Dataset()
 	for s in dataset.species:
-		#if s in alt_dict.keys():
-		#	sp = alt_dict[s]
-		#else:
 		sp = s
 		if truth.lookup_species(sp): # get the length from truth first, because it's going to be more accurate than the giant table of doom
 			sp = truth.lookup_species(sp)
@@ -295,13 +293,14 @@ def calc_raw_abundance(dataset):
 		elif truth_ge.lookup_species(sp):
 			sp = truth_ge.lookup_species(sp)
 			ab_data.add_record(sp,0,dataset.lookup_count(s),truth_ge.lookup_size(sp))
-		elif lengths_sp.lookup_size(sp) != 0:
-			#print "{} is {}bp".format(s,lengths.lookup_size(sp))
-			ab_data.add_record(sp,0,dataset.lookup_count(s),lengths_sp.lookup_size(sp))
+		#elif lengths_sp.lookup_size(sp) != 0:
+		#	#print "{} is {}bp".format(s,lengths.lookup_size(sp))
+		#	ab_data.add_record(s,0,dataset.lookup_count(s),lengths_sp.lookup_size(sp))
 		else:
 			#print "Did not find size of {}".format(s)
 			ab_data.add_record(s,0,dataset.lookup_count(s),0) # if size isn't found, won't be counted towards abundance but will count for counts
 			pass
+
 		#print "{} {} {}".format(sp,ab_data.lookup_count(sp),ab_data.lookup_size(sp))
 	ab_data.abundance = ab_data.counts/(numpy.sum(ab_data.counts)*numpy.array(ab_data.size))
 	ab_data.abundance = [0 if numpy.isinf(a) else a for a in ab_data.abundance] # replace inf's cause by divide-by-0 with 0
@@ -353,6 +352,7 @@ def process_input(filename,size,fragmented=False):
 		raw_est.clean_names()
 		raw_est.counts = [float(i) for i in zip(*input_table)[1]]
 		print "Number of original entries before sizes: {0}".format(len(raw_est.species))
+		raw_est.abundance = [0]*len(raw_est.species)
 		raw_est = calc_raw_abundance(raw_est)
 
 	elif filename.endswith('abundance.txt') or filename.endswith('expression.txt'): # kallisto file; added manually
@@ -393,8 +393,8 @@ def process_input(filename,size,fragmented=False):
 			if est.abundance[i] != 0:
 				f.write('{0}\t{1}\n'.format(species,est.abundance[i]))
 
-
 	j_species,j_genus = collapse_strains(est)
+
 	return est,j_species,j_genus
 
 def dataset_truth(dataset):
@@ -473,7 +473,7 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 	import lanthplot
 
 	true_species = [est.match_species(sp) for sp in truth.species] # make all the versions of species names match the ones in est
-	print sorted(true_species)
+
 	est_species = est.species
 	if ab_or_count == 'abundance':
 		true_abundance = truth.abundance
@@ -487,7 +487,6 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 
 	true_sp = [x.replace('_',' ') for x in true_species]
 	all_species = list(set(est.species + true_species))
-	print sorted(all_species)
 	all_est = [est_abundance[est_species.index(sp)] if sp in est_species else 0 for sp in all_species]
 	all_true = [true_abundance[true_species.index(sp)] if sp in true_species else 0 for sp in all_species]
 	all_diff = []
@@ -643,7 +642,7 @@ def main(argv=sys.argv):
 		dataset_pairs = [('strain',truth,estimated),('species',true_j_species,est_j_species),('genus',true_j_genus,est_j_genus)]
 
 	#dataset_pairs = [('strain',truth,estimated)]
-	dataset_pairs = [('genus',true_j_genus,est_j_genus)]
+	#dataset_pairs = [('genus',true_j_genus,est_j_genus)]
 	for label,true,est in dataset_pairs:
 		print "\n{}-level error:".format(label.capitalize())
 		print "\tCount-based accuracy:"
