@@ -66,7 +66,7 @@ class Dataset():
 						if species == sp:
 							return s
 			#print "Did not find {}".format(species)
-			return ''
+			return species
 
 	def lookup_abundance(self, species):
 		try:
@@ -140,7 +140,7 @@ class Dataset():
 		self.set_by_array([r for r in self.get_array() if (r[0].find(target) == -1)])
 		print "Number of entries after removing {0}: {1}".format(target,len(self.species))
 
-def collapse_synonyms(names): # note this won't correctly handle the case where there are matches for both halves of a synonym
+def collapse_synonyms(names):
 	for i,n in enumerate(names):
 		if n.find('?') != -1:
 			synonyms = n.split('?')
@@ -178,7 +178,7 @@ def species_only(strains):
 			new_strains.append('?'.join(split_strain))
 		else:
 			new_strains.append(species_only_sub(s))
-	#new_strains = collapse_synonyms(new_strains)
+	new_strains = collapse_synonyms(new_strains)
 	return new_strains
 
 def collapse_strains(strains):
@@ -308,7 +308,7 @@ def calc_raw_abundance(dataset):
 	return ab_data
 
 
-def process_input(filename,size,fragmented=False):
+def process_input(filename,truth,fragmented=False):
 	""" Pull species names, abundance, and counts out of input gasic or express file """
 
 	suffix = filename.rpartition('.')[2] #xprs or txt file
@@ -319,7 +319,7 @@ def process_input(filename,size,fragmented=False):
 		input_file = open(filename,'r')
 
 	raw_est = Dataset()
-	raw_est.size = size
+	raw_est.size = truth.size
 	if suffix == 'xprs': #express file
 		input_csv = csv.reader(input_file, 'excel-tab')
 		input_data = [r for r in input_csv]
@@ -383,6 +383,7 @@ def process_input(filename,size,fragmented=False):
 	raw_est.remove_matches('rna') # remove specific genes
 	raw_est.remove_matches('gene_')
 	# Also want to remove ribosomal_RNA_gene, mitochondrion, and chloroplast
+
 	est = collapse_duplicates(raw_est)
 	est.convert_to_percentage()
 	est.sort_by_name()
@@ -473,7 +474,6 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 	import lanthplot
 
 	true_species = [est.match_species(sp) for sp in truth.species] # make all the versions of species names match the ones in est
-
 	est_species = est.species
 	if ab_or_count == 'abundance':
 		true_abundance = truth.abundance
@@ -634,7 +634,14 @@ def main(argv=sys.argv):
 		show_graphs = True
 
 	truth,true_j_species,true_j_genus = dataset_truth(dataset)
-	estimated,est_j_species,est_j_genus = process_input(filename,truth.size)
+	estimated,est_j_species,est_j_genus = process_input(filename,truth)
+
+	estimated.species = [truth.lookup_species(sp) for sp in estimated.species] # make all the versions of species names match the ones in truth
+	estimated = collapse_duplicates(estimated)
+	est_j_species.species = [true_j_species.lookup_species(sp) for sp in est_j_species.species]
+	est_j_species = collapse_duplicates(est_j_species)
+	est_j_genus.species = [true_j_genus.lookup_species(sp) for sp in est_j_genus.species]
+	est_j_genus = collapse_duplicates(est_j_genus)
 
 	if filename.endswith('.clark'): # clark doesn't do strain-level assignment
 		dataset_pairs = [('species',true_j_species,est_j_species),('genus',true_j_genus,est_j_genus)]
@@ -647,7 +654,6 @@ def main(argv=sys.argv):
 		print "\n{}-level error:".format(label.capitalize())
 		print "\tCount-based accuracy:"
 		diff, adjusted_abundance, norm_factor = calc_counts_error(true,est)
-		print sum(adjusted_abundance)
 		if show_graphs:
 			graph_error(true, est, adjusted_abundance, diff, exp_name, label, norm_factor, 'count')
 		print "\tAbundance-based accuracy:"
