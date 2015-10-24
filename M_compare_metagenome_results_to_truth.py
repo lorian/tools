@@ -12,7 +12,6 @@ import itertools
 import collections
 import cPickle
 import os
-import seaborn
 
 numpy.set_printoptions(precision=4)
 
@@ -485,6 +484,7 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 	# These imports are here so script can run on server w/out graphics
 	import lanthplot
 	import matplotlib
+	import seaborn
 
 	true_species = [est.match_species(sp) for sp in truth.species] # make all the versions of species names match the ones in est
 	est_species = est.species
