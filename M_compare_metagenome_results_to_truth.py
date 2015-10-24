@@ -4,7 +4,6 @@ import sys
 import csv
 import numpy
 import string
-import matplotlib
 import math
 import pickle
 import lanthpy
@@ -485,6 +484,8 @@ def calc_ab_error(truth,est):
 def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor, ab_or_count='abundance', savegraphs=True):
 	# These imports are here so script can run on server w/out graphics
 	import lanthplot
+	import matplotlib
+
 	true_species = [est.match_species(sp) for sp in truth.species] # make all the versions of species names match the ones in est
 	est_species = est.species
 	if ab_or_count == 'abundance':
