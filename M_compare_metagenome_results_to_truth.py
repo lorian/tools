@@ -413,7 +413,7 @@ def dataset_truth(dataset):
 		try:
 			i100_csv = [r for r in csv.reader(open('/home/lanthala/compbio_tools/i100_truth.csv','r'), 'excel')]
 		except:
-			i100_csv = [r for r in csv.reader(open('~/tools/i100_truth.csv','r'), 'excel')] # when on server
+			i100_csv = [r for r in csv.reader(open('/home/lorian/tools/i100_truth.csv','r'), 'excel')] # when on server
 		truth.set_by_array(list(i100_csv))
 	elif dataset == 'i100_nol':
 		i100_csv = [r for r in csv.reader(open('/home/lanthala/compbio_tools/i100_truth_nol.csv','r'), 'excel')]
