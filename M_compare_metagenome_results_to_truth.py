@@ -53,7 +53,7 @@ class Dataset():
 		for sp in species.split('?'):
 			if sp in self.species:
 				return sp
-		print "Failed to find species to match {0}.".format(species)
+		#print "Failed to find species to match {0}.".format(species)
 		return species
 
 	def lookup_species(self,species): # find the full name in dataset of a given species from another source
@@ -77,7 +77,7 @@ class Dataset():
 					return self.abundance[self.species.index(sp)]
 				except:
 					pass
-		print "Failed to find abundance of {0}".format(species)
+		#print "Failed to find abundance of {0}".format(species)
 		return 0
 
 	def lookup_count(self, species):
@@ -482,7 +482,7 @@ def calc_ab_error(truth,est):
 
 	return diff,adjusted_abundance,1
 
-def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor, ab_or_count='abundance', savegraphs=False):
+def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor, ab_or_count='abundance', savegraphs=True):
 	# These imports are here so script can run on server w/out graphics
 	import lanthplot
 	true_species = [est.match_species(sp) for sp in truth.species] # make all the versions of species names match the ones in est
