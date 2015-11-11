@@ -12,8 +12,81 @@ import itertools
 import collections
 import cPickle
 import os
+from Bio import Entrez
+import urllib
+import urllib2
 
 numpy.set_printoptions(precision=4)
+
+class TaxaDict():
+	# Consists of a dict mapping names: taxids, and a dict mapping taxids: Taxonomy objects
+	def __init__(self, names = dict(), taxids = dict()):
+		self.names = names
+		self.taxids = taxids
+
+	def name_present(self,name):
+		return (name in self.names.keys())
+
+	def get_taxa_by_name(self,name):
+		# get Taxonomy object by name
+		try:
+			return self.taxids[self.names[name]]
+		except:
+			try:
+				return self.taxids[self.names[name.lower()]]
+			except:
+				return ''
+
+	def get_taxa_by_id(self,taxid):
+		# get Taxonomy object by name
+		try:
+			return self.taxids[taxid]
+		except:
+			return ''
+
+	def get_name_by_id(self,taxid):
+		# get Taxonomy object by name
+		try:
+			return self.taxids[taxid].name
+		except:
+			return ''
+
+	def add_taxa(self,name,official_name,taxid,lineage):
+		tax_entry = Taxonomy(official_name,taxid,lineage)
+		self.names[str(name)] = taxid
+		self.taxids[taxid] = tax_entry
+		return tax_entry
+
+# global taxa dictionary
+tax_dict = TaxaDict()
+
+class Taxonomy():
+
+	def __init__(self, name = "", taxid = 0, lineage = dict()):
+		self.name = name
+		self.taxid = taxid
+		self.lineage = lineage
+
+	def __str__(self):
+		return "{} | {} | {}".format(self.name,self.taxid,self.lineage)
+
+	def filter_tier(self,rank):
+		# return only if at or below a given taxonomic rank
+		ranks = ['strain','species','genus','family','order','class','phylum']
+		valid_ranks = set(ranks[0:ranks.index(rank)+1])
+		if valid_ranks & set(self.lineage.keys()):
+			#print valid_ranks & set(self.lineage.keys())
+			return self.taxid
+		else:
+			return 0
+
+	def return_tier(self,rank):
+		# return the taxid for the specified rank
+		try:
+			return self.lineage[rank]
+		except:
+			#print "Does not have rank {}: {}".format(rank,self)
+			return self.taxid
 
 class Dataset():
 
@@ -22,10 +95,9 @@ class Dataset():
 		self.abundance = list(abundance)
 		self.counts = list(counts)
 		self.size = list(size) # can be empty
-		self.clean_names()
 
 	def add_record(self, new_species, new_abundance, new_counts, new_size=None):
-		self.species.extend(lanthpy.genome_name_cleanup([new_species]))
+		self.species.extend([new_species])
 		self.abundance.append(new_abundance)
 		self.counts.append(new_counts)
 		self.size.append(new_size)
@@ -107,7 +179,21 @@ class Dataset():
 		return [0]*len(self.species)
 
 	def clean_names(self):
-		self.species = lanthpy.genome_name_cleanup(self.species)
+		# If BACT_ abbreviations are found, see if they match large genome database
+		try:
+			min( i for i, sp in enumerate(self.species) if 'BACT_' in sp )
+		except:
+			clean_names = self.species
+		else:
+			with open(os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])),'M_biggenomenames.txt'), 'r') \
+						as biggenomefile:
+				big_genome = dict(csv.reader(biggenomefile))
+			clean_names = [big_genome[s.partition('|')[0]]+"_"+s.partition('|')[2]
+							if s.partition('|')[0] in big_genome.keys()
+							else s for s in self.species]
+
+		# Force clean_names to be lowercase and replace spaces with underscores
+		self.species = [s.lower().strip().replace(" ","_") for s in clean_names]
 
 	def sort_by_name(self):
 		# Alphabetical by species
@@ -138,84 +224,56 @@ class Dataset():
 		self.set_by_array([r for r in self.get_array() if (r[0].find(target) == -1)])
 		print "Number of entries after removing {0}: {1}".format(target,len(self.species))
 
-def collapse_synonyms(names):
-	for i,n in enumerate(names):
-		if n.find('?') != -1:
-			synonyms = n.split('?')
-			if len(set(synonyms)) <= 1: # all the synonyms are identical
-				names[i] = synonyms[0]
-			else:
-				for sp in synonyms:
-					while sp in names: # does one of the synonyms already exist alone?
-						names[names.index(sp)] = n # expand match to include the apparent synonym
-	return names
+	def delete_record(self,target):
+		try:
+			index = self.species.index(target)
+		except:
+			print "{} not found to delete".format(target)
+			return
+		del self.species[index]
+		del self.counts[index]
+		del self.abundance[index]
+		try:
+			del self.size[index]
+		except:
+			return
 
-def genus_only(strains):
-	new_strains = [s.split("_")[0] if (s.find('?') == -1) else (s.partition('?')[0].split("_")[0] +"?"+ s.partition('?')[2].split("_")[0]) for s in strains]
-	new_strains = collapse_synonyms(new_strains)
-	return new_strains
+def print_names(strains):
+	print [tax_dict.get_name_by_id(s) for s in strains]
 
-def species_only_sub(s):
-	s = s.partition('_gi|')[0] # solve the "X_sp_gi|" problem
-	if s.count('_') <2:
-		return s
-	elif s.find('_sp_') != -1 or s.find('_sp._') != -1 or s.find('_species_') != -1:
-		return s.split("_")[0] +"_"+ s.split("_")[1] +"_"+ s.split("_")[2]
-	elif s.find('candidatus') != -1: # stupid fake specieses
-		return s.split("_")[0] +"_"+ s.split("_")[1] +"_"+ s.split("_")[2]
-	else:
-		return s.split("_")[0] +"_"+ s.split("_")[1]
+def uptier_taxa(strains,rank):
+	uptier_names = filter_by_taxa(strains,rank) # gives entries of rank or below
 
-def species_only(strains):
-	new_strains = []
+	uptier_ids = []
 	for s in strains:
-		if s.find('?') != -1:
-			split_strain = []
-			for sp in s.split('?'):
-				split_strain.append(species_only_sub(sp))
-			new_strains.append('?'.join(split_strain))
+		if s in uptier_names:
+			rank_id = tax_dict.get_taxa_by_id(s).return_tier(rank)
+			uptier_ids.append(rank_id)
 		else:
-			new_strains.append(species_only_sub(s))
-	new_strains = collapse_synonyms(new_strains)
-	return new_strains
+			uptier_ids.append(s)
 
-def collapse_strains(strains):
-	""" Group strains together by species and genus """
-	just_genus = genus_only(strains.species)
-	just_species = species_only(strains.species)
+	lookup_tax_list(uptier_ids)
+	#print [tax_dict.get_name_by_id(s) for s in uptier_ids]
+	return uptier_ids
 
-	#print sorted(strains.species)
-	species_combo = [x for x in zip(just_species,strains.abundance,strains.counts,strains.size)]
-	species_dict = {}
-	for s,a,c,z in species_combo:
-		if type(s) is str:
-			species_dict.setdefault(s,[0,0,0]) # list stores ab,counts,size in that order
-			species_dict[s][0] = species_dict[s][0] + a
-			species_dict[s][1] = species_dict[s][1] + c
-			species_dict[s][2] = species_dict[s][2] + z
-		else:
-			print "{} isn't a string, wtf? {} {} {}".format(s,a,c,z)
+def collapse_strains(strains,rank):
+	""" Group strains together by taxa """
+	just_rank = uptier_taxa(strains.species,rank)
 
-	genus_combo = [x for x in zip(just_genus,strains.abundance,strains.counts,strains.size)]
-	genus_dict = {}
-	for s,a,c,z in genus_combo:
-		if type(s) is str:
-			genus_dict.setdefault(s,[0,0,0]) # list stores ab,counts,size in that order
-			genus_dict[s][0] = genus_dict[s][0] + a
-			genus_dict[s][1] = genus_dict[s][1] + c
-			genus_dict[s][2] = genus_dict[s][2] + z
-		else:
-			print "{} isn't a string, wtf? {} {} {}".format(s,a,c,z)
+	rank_combo = [x for x in zip(just_rank,strains.abundance,strains.counts,strains.size)]
+	rank_dict = {}
+	for s,a,c,z in rank_combo:
+		rank_dict.setdefault(s,[0,0,0]) # list stores ab,counts,size in that order
+		rank_dict[s][0] = rank_dict[s][0] + a
+		rank_dict[s][1] = rank_dict[s][1] + c
+		rank_dict[s][2] = rank_dict[s][2] + z
 
-	a,c,z = zip(*species_dict.values())
-	j_species = Dataset(species_dict.keys(),a,c,z)
-	a,c,z = zip(*genus_dict.values())
-	j_genus = Dataset(genus_dict.keys(),a,c,z)
+	a,c,z = zip(*rank_dict.values())
+	j_rank = Dataset(rank_dict.keys(),a,c,z)
 
-	return j_species,j_genus
+	return j_rank
 
 def collapse_duplicates(raw_data):
-
 	# Create dictionary of lists of duplicates
 	dup_data = raw_data.get_array()
 	set_sp = {}
@@ -264,16 +322,16 @@ def collapse_duplicates(raw_data):
 
 	return undupe
 
+'''
 def calc_raw_abundance(dataset):
 	""" Calculate abundance from raw counts, for programs that only give counts """
 	#lengths_file = csv.reader(open('i100_martin_full_lengths.txt','r'), 'excel-tab') # need to parameterize this!
 	#lengths_raw = [r for r in lengths_file]
 	#lengths = Dataset()
 
-	truth,x,y = dataset_truth('i100')
+	truth = dataset_truth('i100')
 	truth_sp,truth_ge = collapse_strains(truth)
 
-	'''
 	lengths.species = zip(*lengths_raw)[0]
 	lengths.size = [int(x) for x in zip(*lengths_raw)[1]]
 	lengths.counts = lengths.null_list()
@@ -284,7 +342,6 @@ def calc_raw_abundance(dataset):
 	lengths.species = [s.partition('_gi')[0] for s in lengths.species] # chop off name details, leave only species
 	lengths_sp,lengths_ge = collapse_strains(lengths)
 	print "Number of entries in sizes: {}".format(len(lengths.species))
-	'''
 
 	ab_data = Dataset()
 	for s in dataset.species:
@@ -311,7 +368,148 @@ def calc_raw_abundance(dataset):
 	ab_data.abundance = [0 if numpy.isinf(a) else a for a in ab_data.abundance] # replace inf's cause by divide-by-0 with 0
 
 	return ab_data
+'''
 
+def lookup_tax(original_name):
+	global tax_dict
+	Entrez.email = "youremail@gmail.com"
+	known_names = dict([('bacterium ellin514 strain ellin514','Pedosphaera parvula Ellin514'),
+						('bacteroidetes sp. f0058','Bacteroidetes oral taxon 274 str. F0058'),
+						('baumannia cicadellinicola str. hc','Baumannia cicadellinicola str. Hc (Homalodisca coagulata)'),
+						('bifidobacterium longum infantis atcc 55813','Bifidobacterium longum subsp. longum ATCC 55813'),
+						('borrelia afzelii pko clone','Borrelia afzelii PKo'),
+						('brucella abortus bv. 1 str. 9-941 chromosome','Brucella abortus bv. 1 str. 9-941'),
+						('brucella abortus bv. 3 str.','Brucella abortus bv. 3'),
+						('buchnera aphidicola str. bp','Buchnera aphidicola str. Bp (Baizongia pistaciae)'),
+						('buchnera aphidicola str. sg','Buchnera aphidicola str. Sg (Schizaphis graminum)'),
+						('buchnera aphidicola str. cc','Buchnera aphidicola BCc'),
+						('buchnera aphidicola str. lsr1','Buchnera aphidicola str. LSR1 (Acyrthosiphon pisum)'),
+						('candidatus hamiltonella defensa 5at','Candidatus Hamiltonella defensa 5AT (Acyrthosiphon pisum)'),
+						('candidatus pelagibacter sp. htcc7211 1105874033148','Candidatus Pelagibacter sp. HTCC7211'),
+						('candidatus ruthia magnifica str. cm','Candidatus Ruthia magnifica str. Cm (Calyptogena magnifica)'),
+						('candidatus sulcia muelleri str. hc','Candidatus_Sulcia_muelleri_str._Hc_(Homalodisca_coagulata)'),
+						('capnocytophaga sputigena atcc 33612 strain capno','Capnocytophaga sputigena ATCC 33612'),
+						('clostridiales bacterium 1 7 47faa strain','Clostridiales bacterium 1_7_47FAA'),
+						('clostridiales genomosp. bvab3 upii9-5','Mageeibacillus indolicus UPII9-5'),
+						('clostridium difficile complete genome strain cf5','clostridium difficile cf5'),
+						('clostridium difficile complete genome strain m120','clostridium difficile m120'),
+						('enterococcus faecalis tx 0109','enterococcus faecalis tx0109'),
+						('enterococcus faecalis tx 0411','enterococcus faecalis tx0411'),
+						('enterococcus faecalis tx 0855','enterococcus faecalis tx0855'),
+						('enterococcus faecalis tx 0860','enterococcus faecalis tx0860'),
+						('enterococcus faecalis tx 2134','enterococcus faecalis tx2134'),
+						('enterococcus faecalis tx 4248','enterococcus faecalis tx4248'),
+						('escherichia coli o150:h5 se15','Escherichia coli SE15'),
+						('lactobacillus brevis gravesensis atcc 27305','Lactobacillus brevis subsp. gravesensis ATCC 27305'),
+						('lactobacillus reuteri sd2112 atcc 55730','Lactobacillus reuteri SD2112'),
+						('lactobacillus rhamnosus gg atcc 53103','Lactobacillus rhamnosus GG'),
+						('methanocaldococcus infernus me c','Methanocaldococcus infernus ME'),
+						('nostoc azollae','\'Nostoc azollae\' 0708'),
+						('providencia alcalifaciens ban1 integrating conjugative element icepalban1','Providencia alcalifaciens Ban1'),
+						('salmonella enterica subsp. arizonae serovar 62:z4z23:--','Salmonella enterica subsp. arizonae serovar 62:z4,z23:-'),
+						('salmonella enterica subsp. enterica serovar 4','Salmonella enterica subsp. enterica serovar 4,[5],12:i:- str. CVM23701'),
+						('selenomonas sp. 67h29bp f0410','Selenomonas sp. oral taxon 149 str. 67H29BP'),
+						('staphylococcus aureus aureus atcc baa-39','Staphylococcus aureus subsp. aureus ATCC BAA-39'),
+						('staphylococcus aureus aureus mn8','Staphylococcus aureus subsp. aureus MN8'),
+						('staphylococcus aureus aureus tch130/st-72','Staphylococcus aureus subsp. aureus TCH130'),
+						('staphylococcus aureus aureus tch60','Staphylococcus aureus subsp. aureus TCH60'),
+						('staphylococcus aureus aureus tch70','Staphylococcus aureus subsp. aureus TCH70'),
+						('staphylococcus aureus aureus usa300 tch959','Staphylococcus aureus subsp. aureus USA300_TCH959'),
+						('streptococcus gallolyticus tx20005','Streptococcus gallolyticus subsp. gallolyticus TX20005'),
+						('streptococcus sp. 73h25ap f0408','Streptococcus sp. oral taxon 071 str. 73H25AP'),
+						('streptomyces coelicolor a3','Streptomyces coelicolor A3(2)'),
+						('wolbachia endosymbiont of drosophila willistoni tsc','Wolbachia endosymbiont of Drosophila willistoni TSC#14030-0811.24'),
+						('xanthomonas campestris pv. vasculorum ncppb702','Xanthomonas vasicola pv. vasculorum NCPPB 702'),
+						('bordetella bronchiseptica strain rb50','Bordetella bronchiseptica RB50'),
+						('chlamydia trachomatis l2buch-1proctitis','Chlamydia trachomatis L2b/UCH-1/proctitis'),
+						('ignicoccus hospitalis kin4i','Ignicoccus hospitalis strain KIN4/I'),
+						('lawsonia intracellularis phemn1-00','Lawsonia intracellularis PHE/MN1-00'),
+						('mycobacterium bovis af212297','Mycobacterium bovis AF2122/97'),
+						('escherichia coli str. k-12 substr. mg1655star','Escherichia coli str. K-12 substr. MG1655'),
+						('bacteria',2),
+						])
+
+	if original_name.lower().replace('_',' ').strip() in known_names.keys(): # problematic names
+		name = known_names[original_name.lower().replace('_',' ').strip()]
+	else:
+		name = original_name
+
+	tax_entry = tax_dict.get_taxa_by_name(original_name) # skip the lookup if taxa was already found
+	if tax_entry:
+		return tax_entry
+	tax_entry = tax_dict.get_taxa_by_id(name) # skip the lookup if taxa was already found
+	if tax_entry:
+		return tax_entry
+
+	try:
+		if type(name) == int or name.isdigit(): #if we've already passed a taxid instead of a text name
+			taxid = name
+		else:
+			# Clean name for URL use; replace marks that cause problems for NCBI lookup with spaces
+			url_name = urllib.quote_plus(name.translate(string.maketrans("()[]:","     ").replace('_',' ').strip()))
+
+			# Look up taxonomy ID
+			handle = Entrez.esearch(db="taxonomy", term=url_name)
+			records = Entrez.read(handle)
+			taxid = records['IdList']
+			if not taxid: # lookup manually instead of through biopython
+
+				page_taxa = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=taxonomy&term={}'.format(url_name))
+				for line in page_taxa:
+					#print line
+					line = string.replace(line,"\t","")
+					if line.startswith("<Id>"):
+						taxid = line[4:-6]
+
+				if not taxid:
+					print "\t Unable to find {}".format(name)
+					print url_name
+					return ""
+
+		# Get taxonomy for id
+		handle = Entrez.efetch(db="taxonomy", id=taxid, mode="text", rettype="xml")
+		taxon = Entrez.read(handle)[0] # only grab the first
+
+		taxid = taxon["TaxId"]
+		official_name = taxon['ScientificName']
+		lineage = dict()
+		try:
+			for t in taxon["LineageEx"]:
+				lineage[t['Rank']] = t['TaxId']
+		except:
+			pass # no parent taxonomy
+
+		if taxon['Rank'] == 'no rank':
+			if 'species' in lineage.keys():
+				lineage['strain'] = taxid
+			else:
+				lineage['no rank'] = taxid
+		else:
+			lineage[taxon['Rank']] = taxid
+
+
+		if type(name) == int or name.isdigit():
+			tax_entry = tax_dict.add_taxa(official_name,official_name,taxid,lineage)
+			tax_entry = tax_dict.add_taxa(original_name,official_name,taxid,lineage)
+			print "{} -> {}".format(original_name,official_name)
+		else:
+			tax_entry = tax_dict.add_taxa(original_name,official_name,taxid,lineage)
+			print "{} -> {}".format(original_name,official_name)
+
+	except Exception as e: # because when a long string of name lookups errors in the middle, it hurts
+		print e
+		return ""
+
+	return tax_entry
+
+def lookup_tax_list(species_list):
+	species_tax = []
+	for name in species_list:
+		tax_entry = lookup_tax(name)
+		if tax_entry:
+			species_tax.append(tax_entry.taxid)
+
+	return species_tax
 
 def process_input(filename,truth,fragmented=False):
 	""" Pull species names, abundance, and counts out of input gasic or express file """
@@ -343,7 +541,7 @@ def process_input(filename,truth,fragmented=False):
 		raw_est.clean_names()
 		raw_est.counts = [float(i) for i in zip(*input_data)[2]]
 		raw_est.abundance = [float(i) if i != '-' else 0.0 for i in zip(*input_data)[4]] # clark's "abundances" don't account for length
-		raw_est = calc_raw_abundance(raw_est)
+		#raw_est = calc_raw_abundance(raw_est)
 
 	elif filename.endswith('.kraken'): #kraken labeled output; not an actual output format, added manually
 		if not os.path.exists(filename +'.p'):
@@ -354,18 +552,17 @@ def process_input(filename,truth,fragmented=False):
 			input_table = [(k.rpartition(';')[2],v) for k,v in input_counts.iteritems()]
 			cPickle.dump(input_table,open(filename +'.p','wb'))
 		raw_est.species = zip(*input_table)[0]
-		raw_est.clean_names()
 		raw_est.counts = [float(i) for i in zip(*input_table)[1]]
 		print "Number of original entries before sizes: {0}".format(len(raw_est.species))
 		raw_est.abundance = [0]*len(raw_est.species)
-		raw_est = calc_raw_abundance(raw_est)
+		#raw_est = calc_raw_abundance(raw_est)
+		#print "Aligned to bacteria: {}".format(raw_est.counts[raw_est.species.index('bacteria')])
 
 	elif filename.endswith('abundance.txt') or filename.endswith('expression.txt'): # kallisto file; added manually
 		input_csv = csv.reader(input_file, 'excel-tab')
 		input_data = [r for r in input_csv]
 		input_data = input_data[1:] #remove header row
 		raw_est.species = zip(*input_data)[0]
-		raw_est.clean_names()
 		raw_est.counts = [float(i) for i in zip(*input_data)[3]]
 		raw_est.abundance = [float(i) for i in zip(*input_data)[4]]
 		raw_est.size = raw_est.null_list()
@@ -375,33 +572,27 @@ def process_input(filename,truth,fragmented=False):
 		input_data = [r for r in input_csv]
 		input_data = input_data[1:] #remove header row
 		raw_est.species = zip(*input_data)[0]
-		raw_est.clean_names()
 		raw_est.counts = [float(i) for i in zip(*input_data)[2]]
-		raw_est = calc_raw_abundance(raw_est)
+		raw_est.abundance = [0]*len(raw_est.species)
+		#raw_est = calc_raw_abundance(raw_est)
 
 	else:
 		print "File is not supported input type"
 
 	print "Number of raw entries: {0}".format(len(raw_est.species))
+
 	raw_est.clean_names()
-	#raw_est.remove_matches('plasmid') # simulated data assumes plasmids are present at 1x copy number, as wrong as that is
+	#raw_est.remove_matches('plasmid') # simulated data assumes plasmids are present at 1x copy number
 	raw_est.remove_matches('rna') # remove specific genes
 	raw_est.remove_matches('gene_')
-	# Also want to remove ribosomal_RNA_gene, mitochondrion, and chloroplast
 
 	est = collapse_duplicates(raw_est)
 	est.convert_to_percentage()
 	est.sort_by_name()
 	est.set_threshold()
+	est.species = lookup_tax_list(est.species) # from this point on, species are taxids
 
-	with open('non-zero_abundances.txt','w') as f:
-		for i,species in enumerate(est.species):
-			if est.abundance[i] != 0:
-				f.write('{0}\t{1}\n'.format(species,est.abundance[i]))
-
-	j_species,j_genus = collapse_strains(est)
-
-	return est,j_species,j_genus
+	return est
 
 def dataset_truth(dataset):
 	""" truth is in format |species|abundance|counts|genome size| where undefined counts is 0
@@ -437,23 +628,38 @@ def dataset_truth(dataset):
 
 	truth.clean_names()
 	truth.sort_by_name()
-	true_j_species,true_j_genus = collapse_strains(truth)
+	truth.species = lookup_tax_list(truth.species) # from this point on, species are taxids
 
-	return truth,true_j_species,true_j_genus
+	return truth
+
+def filter_by_taxa(taxids,rank):
+	filtered_names = set()
+	for taxid in taxids:
+		id_taxa = tax_dict.get_taxa_by_id(taxid)
+		#print tax_dict.get_name_by_id(taxid)
+		#print id_taxa
+		filtered_names.add(id_taxa.filter_tier(rank))
+
+	filtered_names.discard(0) # 0 is returned if a name doesn't pass the rank filter
+
+	# Discard specific entries that don't get caught automatically
+	if rank == 'strain':
+		filtered_names.discard('83333') # Escherichia coli K-12
+
+	#print [tax_dict.get_name_by_id(s) for s in filtered_names]
+	return filtered_names
 
 def calc_counts_error(truth,est):
 	adjusted_counts = numpy.zeros(len(truth.species))
 
 	for ind,sp in enumerate(truth.species):
 		adjusted_counts[ind] = est.lookup_count(sp)
+		#print "{} {}: {}".format(sp,tax_dict.get_name_by_id(sp),est.lookup_count(sp))
 
 	print "Total number of samples: ,{}".format(len(est.counts))
 	print "Total number of samples that match truth: ,{} ({} actually in truth)".format(len(adjusted_counts),len(truth.species))
-	if (sum(est.counts) - sum(adjusted_counts))/sum(est.counts) != 0:
-		print "% counts mis-assigned to non-truth taxa: ,{:.2f}%".format(100*(sum(est.counts) - sum(adjusted_counts))/sum(est.counts))
-
-	if (sum(truth.counts) - sum(est.counts))/sum(truth.counts) != 0:
-		print "% counts not assigned at all: ,{:.2f}% ({:.0f} counts assigned)".format(100*(sum(truth.counts) - sum(est.counts))/sum(truth.counts),sum(est.counts))
+	print "% counts mis-assigned to non-truth taxa: ,{:.2f}%".format(100*(sum(est.counts) - sum(adjusted_counts))/sum(est.counts))
+	print "% counts not assigned at all: ,{:.2f}% ({:.0f} counts assigned)".format(100*(sum(truth.counts) - sum(est.counts))/sum(truth.counts),sum(est.counts))
 
 	diff = 100*(numpy.array(adjusted_counts) - numpy.array(truth.counts))/numpy.array(truth.counts)
 	print "\nAverage relative error of assigned counts: ,{:.2f}%".format(numpy.mean(abs(diff)))
@@ -467,8 +673,35 @@ def calc_counts_error(truth,est):
 	print "Average relative error of normalized (by a factor of ,{:.2f}) assigned counts: {:.2f}%".format(normalization_factor,numpy.mean(abs(diff_n)))
 	diff_sq_n = [d*d/10000 for d in diff_n]
 	print "Relative root mean squared error of normalized assigned counts: ,{:.2f}%".format(numpy.mean(diff_sq_n) ** (0.5) * 100)
+
 	return diff_n,normalized_counts,normalization_factor
 
+def calc_kraken_error(truth,est,rank):
+	# Sensitivity:
+	print sum(truth.counts)
+	print sum(est.counts)
+	A = 0.0 # number of reads correctly assigned at target rank
+	for sp in truth.species:
+		A += min(est.lookup_count(sp),truth.lookup_count(sp))
+
+	B = 0.0 # number of reads assigned to target rank
+	rank_names = filter_by_taxa(est.species,rank)
+	print "Lacking taxa {}:".format(rank)
+	for name in rank_names:
+		if rank in tax_dict.get_taxa_by_id(name).lineage.keys():
+			B += est.lookup_count(name)
+		else:
+			print tax_dict.get_taxa_by_id(name)
+
+	print "Sensitivity: {}/{} = {}".format(A, B, A/B)
+
+	E = 0.0
+	for sp in est.species:
+		if sp not in rank_names: # look for things assigned above tier
+			#print tax_dict.get_taxa_by_id(sp)
+			E += est.lookup_count(sp)
+
+	print "Precision: {}/({}+{}) = {}".format(A, B, E, A/(B+E))
 
 def calc_ab_error(truth,est):
 	adjusted_abundance = numpy.zeros(len(truth.species))
@@ -489,20 +722,36 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 	import matplotlib
 	import seaborn
 
-	true_species = [est.match_species(sp) for sp in truth.species] # make all the versions of species names match the ones in est
-	est_species = est.species
+	# Drop any entry that's above the desired taxa level
+	filtered_names = filter_by_taxa(est.species,tier)
+
+	filtered_est = Dataset()
+	for sp in filtered_names:
+		filtered_est.add_record(sp,est.lookup_abundance(sp),est.lookup_count(sp),est.lookup_size(sp))
+
+	true_species = [tax_dict.get_name_by_id(s) for s in truth.species]
+	est_species = [tax_dict.get_name_by_id(s) for s in filtered_est.species]
 	if ab_or_count == 'abundance':
 		true_abundance = truth.abundance
-		est_abundance = est.abundance
+		est_abundance = filtered_est.abundance
 	elif ab_or_count == 'count':
 		true_abundance = truth.counts
-		est_abundance = list(numpy.array(est.counts)*norm_factor)
+		est_abundance = list(numpy.array(filtered_est.counts)*norm_factor)
 	else:
 		print "Unknown argument passed: {}".format(ab_or_count)
 		return
 
-	true_sp = [x.replace('_',' ') for x in true_species]
-	all_species = list(set(est.species + true_species))
+	true_sp = true_species
+	all_species = list(set(est_species + true_species))
+	print len(all_species)
+
+	print "\tShouldn't be here:"
+	weird = set(filtered_est.species + truth.species).difference(set(truth.species))
+	for s in weird:
+		wt = tax_dict.get_taxa_by_id(s)
+		print wt
+
+
 	all_est = [est_abundance[est_species.index(sp)] if sp in est_species else 0 for sp in all_species]
 	all_true = [true_abundance[true_species.index(sp)] if sp in true_species else 0 for sp in all_species]
 	all_diff = []
@@ -522,8 +771,9 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		ab_filter.sort( key=lambda x: x[1],reverse=True )
 		ab_species,ab_true,ab_adjusted = zip(*ab_filter)
 
-		lanthplot.plot_setup_pre("Graph of {}-level {}s in {}"
-			.format(tier,ab_or_count,expname), xlabels = ab_species, xticks = range(0,xmax), xrotation = -90)
+		#lanthplot.plot_setup_pre("Graph of {}-level {}s in {}"
+		#	.format(tier,ab_or_count,expname), xlabels = ab_species, xticks = range(0,xmax), xrotation = -90)
+		lanthplot.plot_setup_pre(xlabels = ab_species, xticks = range(0,xmax), xrotation = -90)
 		lanthplot.plot(x, ab_true, color='blue', label='True')
 		lanthplot.plot(x,ab_adjusted, color='red', label='Estimated')
 		if savegraphs:
@@ -568,9 +818,13 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		all_filter.sort( key=lambda x: x[1],reverse=True )
 		fil_sp,fil_true,fil_est = zip(*all_filter)
 
+		'''
 		lanthplot.plot_setup_pre(
 			"Graph of all above-average estimated {}s in {} at {}-level"
 			.format(ab_or_count,expname,tier), xlabels = fil_sp, xticks = range(0,xmax),
+			xrotation = -90)
+		'''
+		lanthplot.plot_setup_pre(xlabels = fil_sp, xticks = range(0,xmax),
 			xrotation = -90)
 		lanthplot.plot(x, fil_true, color='blue', label="True")
 		lanthplot.plot(x, fil_est, color='red', label="Estimated")
@@ -593,6 +847,7 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		lanthplot.plot(x, fil_est, color='red', label="Estimated")
 		lanthplot.plot_setup_post(save_file = expname +'_'+ tier +'_sigabundances2.png')
 		'''
+	'''
 	# graph diffs
 	if len(all_species) == len(true_species):
 
@@ -643,6 +898,7 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 					lanthplot.plot_setup_post(save_file = expname +'_'+ tier +'_allerrors.png',legend=False)
 				else:
 					lanthplot.plot_setup_post(legend=False)
+	'''
 	return
 
 def main(argv=sys.argv):
@@ -660,35 +916,50 @@ def main(argv=sys.argv):
 	else:
 		show_graphs = True
 
-	truth,true_j_species,true_j_genus = dataset_truth(dataset)
-	estimated,est_j_species,est_j_genus = process_input(filename,truth)
+	global tax_dict
+	pickle_len = 0
+	if os.path.exists('species_taxonomy.pickle'):
+		print "Loading taxonomy dict..."
+		tax_dict = cPickle.load(open('species_taxonomy.pickle','rb'))
+		pickle_len = len(tax_dict.names.keys())
 
-	# make all the versions of species names match the ones in truth
-	estimated.species = [truth.lookup_species(sp) for sp in estimated.species]
-	estimated = collapse_duplicates(estimated)
-	est_j_species.species = [true_j_species.lookup_species(sp) for sp in est_j_species.species]
-	est_j_species = collapse_duplicates(est_j_species)
-	est_j_genus.species = [true_j_genus.lookup_species(sp) for sp in est_j_genus.species]
-	est_j_genus = collapse_duplicates(est_j_genus)
+	truth = dataset_truth(dataset)
+	estimated = process_input(filename,truth)
+	est_j_species = collapse_strains(estimated,'species')
+	est_j_genus = collapse_strains(estimated,'genus')
+	est_j_phylum = collapse_strains(estimated,'phylum')
+	true_j_species = collapse_strains(truth,'species')
+	true_j_genus = collapse_strains(truth,'genus')
+	true_j_phylum = collapse_strains(truth,'phylum')
+
+	if pickle_len != len(tax_dict.names.keys()): # don't re-pickle if nothing new is added
+		print "Saving taxonomy dict..."
+		cPickle.dump(tax_dict,open('species_taxonomy.pickle','wb'))
 
 	if filename.endswith('.clark'): # clark doesn't do strain-level assignment
-		dataset_pairs = [('species',true_j_species,est_j_species),('genus',true_j_genus,est_j_genus)]
+		dataset_pairs = [('species',true_j_species,est_j_species),('genus',true_j_genus,est_j_genus),('phylum',true_j_phylum,est_j_phylum)]
 	else:
-		dataset_pairs = [('strain',truth,estimated),('species',true_j_species,est_j_species),('genus',true_j_genus,est_j_genus)]
+		dataset_pairs = [('strain',truth,estimated),('species',true_j_species,est_j_species),('genus',true_j_genus,est_j_genus),('phylum',true_j_phylum,est_j_phylum)]
 
 	#dataset_pairs = [('strain',truth,estimated)]
-	#dataset_pairs = [('genus',true_j_genus,est_j_genus)]
+	dataset_pairs = [('genus',true_j_genus,est_j_genus)]
+	#dataset_pairs = [('species',true_j_species,est_j_species)]
 	for label,true,est in dataset_pairs:
 		print "\n{}-level error:".format(label.capitalize())
 		print "\tCount-based accuracy:"
 		diff, adjusted_abundance, norm_factor = calc_counts_error(true,est)
+		print "\tPrecision and sensitivity:"
+		calc_kraken_error(true,est,label)
 		if show_graphs:
 			graph_error(true, est, adjusted_abundance, diff, exp_name, label, norm_factor, 'count')
-		print "\tAbundance-based accuracy:"
+		#print "\tAbundance-based accuracy:"
 
-		diff, adjusted_abundance, norm_factor = calc_ab_error(true,est)
+		#diff, adjusted_abundance, norm_factor = calc_ab_error(true,est)
 		#if show_graphs:
 		#	graph_error(truth, est, adjusted_abundance, diff, exp_name, label, 1, 'abundance')
 
+
+
+
 if __name__ == "__main__":
-    main()
+	main()
