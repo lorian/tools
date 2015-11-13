@@ -15,6 +15,7 @@ import os
 from Bio import Entrez
 import urllib
 import urllib2
+import pylab
 
 numpy.set_printoptions(precision=4)
 
@@ -24,8 +25,11 @@ class TaxaDict():
 		self.names = names
 		self.taxids = taxids
 
-	def name_present(self,name):
-		return (name in self.names.keys())
+	def get_taxa(self,name_or_id):
+		taxa = self.get_taxa_by_id(name_or_id)
+		if not taxa:
+			taxa = self.get_taxa_by_name(name_or_id)
+		return taxa
 
 	def get_taxa_by_name(self,name):
 		# get Taxonomy object by name
@@ -57,6 +61,10 @@ class TaxaDict():
 		self.taxids[taxid] = tax_entry
 		return tax_entry
 
+	def remove_taxa(self,taxid):
+		del self.names[self.get_taxa_by_id(taxid).name]
+		del self.taxids[taxid]
+
 # global taxa dictionary
 tax_dict = TaxaDict()
 
@@ -80,6 +88,15 @@ class Taxonomy():
 		else:
 			return 0
 
+	def filter_tier_exact(self,rank):
+		# return only if AT a given taxonomic rank
+		ranks = ['strain','species','genus','family','order','class','phylum']
+		if rank in self.lineage.keys():
+			#print valid_ranks & set(self.lineage.keys())
+			return self.taxid
+		else:
+			return 0
+
 	def return_tier(self,rank):
 		# return the taxid for the specified rank
 		try:
@@ -87,6 +104,10 @@ class Taxonomy():
 		except:
 			#print "Does not have rank {}: {}".format(rank,self)
 			return self.taxid
+
+	def has_lineage(self,taxid):
+		# does this Taxonomy object have this taxid somewhere in its lineage?
+		return taxid in self.lineage.values()
 
 class Dataset():
 
@@ -426,7 +447,11 @@ def lookup_tax(original_name):
 						('lawsonia intracellularis phemn1-00','Lawsonia intracellularis PHE/MN1-00'),
 						('mycobacterium bovis af212297','Mycobacterium bovis AF2122/97'),
 						('escherichia coli str. k-12 substr. mg1655star','Escherichia coli str. K-12 substr. MG1655'),
+						('clostridium botulinum e1 str. \'bont e','Clostridium botulinum E1 str. \'BoNT E Beluga\''),
 						('bacteria',2),
+						('bacillus',1386),
+						('thermosipho',2420),
+						('yersinia',629),
 						])
 
 	if original_name.lower().replace('_',' ').strip() in known_names.keys(): # problematic names
@@ -466,6 +491,11 @@ def lookup_tax(original_name):
 					print url_name
 					return ""
 
+		if str(taxid) == '178505':
+			print original_name
+			print url_name
+
+
 		# Get taxonomy for id
 		handle = Entrez.efetch(db="taxonomy", id=taxid, mode="text", rettype="xml")
 		taxon = Entrez.read(handle)[0] # only grab the first
@@ -483,10 +513,9 @@ def lookup_tax(original_name):
 			if 'species' in lineage.keys():
 				lineage['strain'] = taxid
 			else:
-				lineage['no rank'] = taxid
+				lineage[str(taxid)] = taxid
 		else:
 			lineage[taxon['Rank']] = taxid
-
 
 		if type(name) == int or name.isdigit():
 			tax_entry = tax_dict.add_taxa(official_name,official_name,taxid,lineage)
@@ -495,6 +524,10 @@ def lookup_tax(original_name):
 		else:
 			tax_entry = tax_dict.add_taxa(original_name,official_name,taxid,lineage)
 			print "{} -> {}".format(original_name,official_name)
+
+		if '2759' in lineage.values(): # catch eukaryotes
+			print "\t\t\tWarning: {} appears to be a eukaryote!".format(original_name)
+			print tax_entry
 
 	except Exception as e: # because when a long string of name lookups errors in the middle, it hurts
 		print e
@@ -636,8 +669,6 @@ def filter_by_taxa(taxids,rank):
 	filtered_names = set()
 	for taxid in taxids:
 		id_taxa = tax_dict.get_taxa_by_id(taxid)
-		#print tax_dict.get_name_by_id(taxid)
-		#print id_taxa
 		filtered_names.add(id_taxa.filter_tier(rank))
 
 	filtered_names.discard(0) # 0 is returned if a name doesn't pass the rank filter
@@ -646,7 +677,6 @@ def filter_by_taxa(taxids,rank):
 	if rank == 'strain':
 		filtered_names.discard('83333') # Escherichia coli K-12
 
-	#print [tax_dict.get_name_by_id(s) for s in filtered_names]
 	return filtered_names
 
 def calc_counts_error(truth,est):
@@ -676,32 +706,63 @@ def calc_counts_error(truth,est):
 
 	return diff_n,normalized_counts,normalization_factor
 
+def climb_tree(taxid,dataset):
+	# Given a taxid and a Dataset, calculate the total counts that would end up in that taxid
+	count_sum = 0.0
+	for sp in dataset.species:
+		if tax_dict.get_taxa_by_id(sp).has_lineage(taxid):
+			count_sum += dataset.lookup_count(sp)
+			#print tax_dict.get_taxa_by_id(sp)
+	return count_sum
+
+def climb_tree_verbose(taxid,dataset):
+	# Given a taxid and a Dataset, calculate the total counts that would end up in that taxid
+	count_sum = 0.0
+	for sp in dataset.species:
+		if tax_dict.get_taxa_by_id(sp).has_lineage(taxid):
+			count_sum += dataset.lookup_count(sp)
+			print tax_dict.get_taxa_by_id(sp)
+	return count_sum
+
 def calc_kraken_error(truth,est,rank):
 	# Sensitivity:
-	print sum(truth.counts)
-	print sum(est.counts)
+
 	A = 0.0 # number of reads correctly assigned at target rank
 	for sp in truth.species:
 		A += min(est.lookup_count(sp),truth.lookup_count(sp))
 
 	B = 0.0 # number of reads assigned to target rank
 	rank_names = filter_by_taxa(est.species,rank)
-	print "Lacking taxa {}:".format(rank)
 	for name in rank_names:
+		#if (name not in truth.species) and (est.lookup_count(name) > 10):
+			#print "{}: {}".format(tax_dict.get_taxa_by_id(name).name,est.lookup_count(name))
 		if rank in tax_dict.get_taxa_by_id(name).lineage.keys():
 			B += est.lookup_count(name)
-		else:
-			print tax_dict.get_taxa_by_id(name)
 
-	print "Sensitivity: {}/{} = {}".format(A, B, A/B)
+	print "Sensitivity: ,{}/{}".format(A,B)
+	print "\t= ,{}".format(A/B)
+
+	# Precision
+	C = A # number of reads correctly assigned at target rank or below
+
+	D = 0.0 # of reads assigned at target rank or below
+	for name in rank_names:
+		D += est.lookup_count(name)
 
 	E = 0.0
 	for sp in est.species:
 		if sp not in rank_names: # look for things assigned above tier
-			#print tax_dict.get_taxa_by_id(sp)
-			E += est.lookup_count(sp)
+			true_sum = climb_tree(sp,truth) # sum of everything below or at this taxa
+			est_sum = climb_tree(sp,est)
+			if est_sum > true_sum: # only counts as wrong if it overestimates
+				#print "\t\t\t\t{}".format(sp)
+				#print tax_dict.get_taxa_by_id(sp)
+				#print climb_tree_verbose(sp,truth)
+				#print climb_tree_verbose(sp,est)
+				E += est_sum - true_sum
 
-	print "Precision: {}/({}+{}) = {}".format(A, B, E, A/(B+E))
+	print "Precision: ,{}/({}+{})".format(C,D,E)
+	print "\t= ,{}".format(C/(D+E))
 
 def calc_ab_error(truth,est):
 	adjusted_abundance = numpy.zeros(len(truth.species))
@@ -722,8 +783,18 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 	import matplotlib
 	import seaborn
 
-	# Drop any entry that's above the desired taxa level
-	filtered_names = filter_by_taxa(est.species,tier)
+	# Drop any entry that is above the desired taxa level
+		# sometimes the strain-level filter filters out species-level genomes, so add truth back in
+	filtered_names = list(filter_by_taxa(est.species,tier).union(set(truth.species)))
+
+	'''
+	print "Missing:"
+	for sp in est.species:
+		if (sp not in filtered_names) and (est.lookup_count(sp) > 2000):
+			est.print_record(sp)
+			truth.print_record(sp)
+			print tax_dict.get_taxa(sp)
+	'''
 
 	filtered_est = Dataset()
 	for sp in filtered_names:
@@ -743,14 +814,6 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 
 	true_sp = true_species
 	all_species = list(set(est_species + true_species))
-	print len(all_species)
-
-	print "\tShouldn't be here:"
-	weird = set(filtered_est.species + truth.species).difference(set(truth.species))
-	for s in weird:
-		wt = tax_dict.get_taxa_by_id(s)
-		print wt
-
 
 	all_est = [est_abundance[est_species.index(sp)] if sp in est_species else 0 for sp in all_species]
 	all_true = [true_abundance[true_species.index(sp)] if sp in true_species else 0 for sp in all_species]
@@ -760,7 +823,6 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 			all_diff.append(100*(a - all_true[i]) / max(a,all_true[i]))
 		except ZeroDivisionError:
 			all_diff.append(0) # if both the estimate and the actual are 0, we're good here
-	#pickle.dump(zip(all_species,all_diff),open(expname+"_diffs.pickle",'w'))
 
 	# graph true abundances
 	if len(all_species) == len(true_species):
@@ -771,11 +833,15 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		ab_filter.sort( key=lambda x: x[1],reverse=True )
 		ab_species,ab_true,ab_adjusted = zip(*ab_filter)
 
-		#lanthplot.plot_setup_pre("Graph of {}-level {}s in {}"
-		#	.format(tier,ab_or_count,expname), xlabels = ab_species, xticks = range(0,xmax), xrotation = -90)
+		'''
+		lanthplot.plot_setup_pre("Graph of {}-level {}s in {}"
+			.format(tier,ab_or_count,expname), xlabels = ab_species,
+			xticks = range(0,xmax), xrotation = -90, yaxislabel = 'Counts')
+		'''
 		lanthplot.plot_setup_pre(xlabels = ab_species, xticks = range(0,xmax), xrotation = -90)
 		lanthplot.plot(x, ab_true, color='blue', label='True')
-		lanthplot.plot(x,ab_adjusted, color='red', label='Estimated')
+		lanthplot.plot(x,ab_adjusted, color='red', label='Estimated', plot_type = 'scatter')
+		matplotlib.pyplot.gca().set_ylim(bottom=0.) # set x axis at y=0
 		if savegraphs:
 			lanthplot.plot_setup_post(save_file = expname +'_'+ tier +'_'+ ab_or_count +'s.png')
 		else:
@@ -813,8 +879,9 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		present_sp = [x.replace('_',' ') for x in present_species]
 		x = numpy.array(range(0,xmax))
 
-		# sort based on true abundance
+		# sort based on true abundance then est abundance for false positives
 		all_filter = zip(present_sp,present_true,present_est)
+		all_filter.sort( key=lambda x: x[2],reverse=True )
 		all_filter.sort( key=lambda x: x[1],reverse=True )
 		fil_sp,fil_true,fil_est = zip(*all_filter)
 
@@ -822,12 +889,13 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		lanthplot.plot_setup_pre(
 			"Graph of all above-average estimated {}s in {} at {}-level"
 			.format(ab_or_count,expname,tier), xlabels = fil_sp, xticks = range(0,xmax),
-			xrotation = -90)
+			xrotation = -90, yaxislabel = 'Counts')
 		'''
 		lanthplot.plot_setup_pre(xlabels = fil_sp, xticks = range(0,xmax),
 			xrotation = -90)
 		lanthplot.plot(x, fil_true, color='blue', label="True")
-		lanthplot.plot(x, fil_est, color='red', label="Estimated")
+		lanthplot.plot(x, fil_est, color='red', label="Estimated", plot_type = 'scatter')
+		matplotlib.pyplot.gca().set_ylim(bottom=0.)
 		if savegraphs:
 			lanthplot.plot_setup_post(save_file = expname +'_'+ tier +'_sig'+ ab_or_count +'s.png')
 		else:
@@ -905,6 +973,7 @@ def main(argv=sys.argv):
 	"""
 	Command line usage: python M_compare_metagenomic_results_to_truth.py
 						[filename] [dataset] <show graphs? (defaults to true)>
+						<save graphs? (defaults to true)>
 	"""
 
 	filename = argv[1]
@@ -942,14 +1011,15 @@ def main(argv=sys.argv):
 		dataset_pairs = [('strain',truth,estimated),('species',true_j_species,est_j_species),('genus',true_j_genus,est_j_genus),('phylum',true_j_phylum,est_j_phylum)]
 
 	#dataset_pairs = [('strain',truth,estimated)]
-	dataset_pairs = [('genus',true_j_genus,est_j_genus)]
+	#dataset_pairs = [('genus',true_j_genus,est_j_genus)]
 	#dataset_pairs = [('species',true_j_species,est_j_species)]
 	for label,true,est in dataset_pairs:
-		print "\n{}-level error:".format(label.capitalize())
+		print "{}-LEVEL ERROR:".format(label.upper())
 		print "\tCount-based accuracy:"
 		diff, adjusted_abundance, norm_factor = calc_counts_error(true,est)
-		print "\tPrecision and sensitivity:"
-		calc_kraken_error(true,est,label)
+		if label != 'strain': # does NOT give sensible results at strain level
+			print "\tPrecision and sensitivity:"
+			calc_kraken_error(true,est,label)
 		if show_graphs:
 			graph_error(true, est, adjusted_abundance, diff, exp_name, label, norm_factor, 'count')
 		#print "\tAbundance-based accuracy:"
@@ -958,7 +1028,7 @@ def main(argv=sys.argv):
 		#if show_graphs:
 		#	graph_error(truth, est, adjusted_abundance, diff, exp_name, label, 1, 'abundance')
 
-
+	#print climb_tree_verbose('2759',estimated)
 
 
 if __name__ == "__main__":
