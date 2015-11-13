@@ -5,7 +5,6 @@ import csv
 import numpy
 import string
 import math
-import pickle
 import lanthpy
 import pprint
 import itertools
@@ -16,6 +15,7 @@ from Bio import Entrez
 import urllib
 import urllib2
 import pylab
+import argparse
 
 numpy.set_printoptions(precision=4)
 
@@ -471,7 +471,7 @@ def lookup_tax(original_name):
 			taxid = name
 		else:
 			# Clean name for URL use; replace marks that cause problems for NCBI lookup with spaces
-			url_name = urllib.quote_plus(name.translate(string.maketrans("()[]:","     ").replace('_',' ').strip()))
+			url_name = urllib.quote_plus(name.translate(string.maketrans("()[]:","	 ").replace('_',' ').strip()))
 
 			# Look up taxonomy ID
 			handle = Entrez.esearch(db="taxonomy", term=url_name)
@@ -777,7 +777,7 @@ def calc_ab_error(truth,est):
 
 	return diff,adjusted_abundance,1
 
-def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor, ab_or_count='abundance', savegraphs=True):
+def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor, ab_or_count, show_graphs, save_graphs):
 	# These imports are here so script can run on server w/out graphics
 	import lanthplot
 	import matplotlib
@@ -842,8 +842,8 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		lanthplot.plot(x, ab_true, color='blue', label='True')
 		lanthplot.plot(x,ab_adjusted, color='red', label='Estimated', plot_type = 'scatter')
 		matplotlib.pyplot.gca().set_ylim(bottom=0.) # set x axis at y=0
-		if savegraphs:
-			lanthplot.plot_setup_post(save_file = expname +'_'+ tier +'_'+ ab_or_count +'s.png')
+		if save_graphs:
+			lanthplot.plot_setup_post(save_file = expname +'_'+ tier +'_'+ ab_or_count +'s.png', show=show_graphs)
 		else:
 			lanthplot.plot_setup_post(legend=False)
 
@@ -896,25 +896,11 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		lanthplot.plot(x, fil_true, color='blue', label="True")
 		lanthplot.plot(x, fil_est, color='red', label="Estimated", plot_type = 'scatter')
 		matplotlib.pyplot.gca().set_ylim(bottom=0.)
-		if savegraphs:
-			lanthplot.plot_setup_post(save_file = expname +'_'+ tier +'_sig'+ ab_or_count +'s.png')
+		if save_graphs:
+			lanthplot.plot_setup_post(save_file = expname +'_'+ tier +'_sig'+ ab_or_count +'s.png', show=show_graphs)
 		else:
 			lanthplot.plot_setup_post(legend=False)
 
-		'''
-		# sort based on name
-		all_filter = zip(present_sp,present_true,present_est)
-		all_filter.sort( key=lambda x: x[0],reverse=True )
-		fil_sp,fil_true,fil_est = zip(*all_filter)
-
-		lanthplot.plot_setup_pre(
-			"Graph of all above-average estimated abundances in {0} at {1}-level"
-			.format(expname,tier), xlabels = fil_sp, xticks = range(0,xmax),
-			xrotation = -90)
-		lanthplot.plot(x, fil_true, color='blue', label="True")
-		lanthplot.plot(x, fil_est, color='red', label="Estimated")
-		lanthplot.plot_setup_post(save_file = expname +'_'+ tier +'_sigabundances2.png')
-		'''
 	'''
 	# graph diffs
 	if len(all_species) == len(true_species):
@@ -976,14 +962,22 @@ def main(argv=sys.argv):
 						<save graphs? (defaults to true)>
 	"""
 
-	filename = argv[1]
-	exp_name = filename.rpartition('_')[0] # will be used for graph-naming purposes
-	dataset = argv[2] #i100 or simLC
+	parser = argparse.ArgumentParser(description='Compare output of metagenomic analysis tools with ground truth of dataset')
+	parser.add_argument('filename', help='Output file of metagenomic analysis tool')
+	parser.add_argument('dataset', nargs='?', default='i100', help='Indicate dataset that was analyzed; default is i100')
 
-	if len(argv) > 3 and (argv[3].lower() == 'false' or argv[3].lower() == 'f'):
-		show_graphs = False
-	else:
-		show_graphs = True
+	parser.add_argument('-g', '--show-graphs', action='store_true', help='Display graphs of calculated errors')
+	parser.add_argument('-s','--save-graphs', action='store_true', help='Save graphs of calculated errors to file')
+	parser.add_argument('--taxa', default='all', help='Desired taxa level of analysis. Accepts one of: strain, species, genus, phylum. Defaults to all.')
+	args = parser.parse_args()
+
+	filename = args.filename
+	exp_name = filename.rpartition('.')[0] # will be used for graph-naming purposes
+	dataset = args.dataset
+	show_graphs = args.show_graphs
+	save_graphs = args.save_graphs
+
+	print "Running comparison on {} output file.".format(filename)
 
 	global tax_dict
 	pickle_len = 0
@@ -1010,9 +1004,15 @@ def main(argv=sys.argv):
 	else:
 		dataset_pairs = [('strain',truth,estimated),('species',true_j_species,est_j_species),('genus',true_j_genus,est_j_genus),('phylum',true_j_phylum,est_j_phylum)]
 
-	#dataset_pairs = [('strain',truth,estimated)]
-	#dataset_pairs = [('genus',true_j_genus,est_j_genus)]
-	#dataset_pairs = [('species',true_j_species,est_j_species)]
+	if args.taxa == 'strain':
+		dataset_pairs = [('strain',truth,estimated)]
+	elif args.taxa == 'species':
+		dataset_pairs = [('species',true_j_species,est_j_species)]
+	elif args.taxa == 'genus':
+		dataset_pairs = [('genus',true_j_genus,est_j_genus)]
+	elif args.taxa == 'phylum':
+		dataset_pairs = [('phylum',true_j_phylum,est_j_phylum)]
+
 	for label,true,est in dataset_pairs:
 		print "{}-LEVEL ERROR:".format(label.upper())
 		print "\tCount-based accuracy:"
@@ -1020,8 +1020,8 @@ def main(argv=sys.argv):
 		if label != 'strain': # does NOT give sensible results at strain level
 			print "\tPrecision and sensitivity:"
 			calc_kraken_error(true,est,label)
-		if show_graphs:
-			graph_error(true, est, adjusted_abundance, diff, exp_name, label, norm_factor, 'count')
+		if show_graphs or save_graphs:
+			graph_error(true, est, adjusted_abundance, diff, exp_name, label, norm_factor, 'count', show_graphs, save_graphs)
 		#print "\tAbundance-based accuracy:"
 
 		#diff, adjusted_abundance, norm_factor = calc_ab_error(true,est)
