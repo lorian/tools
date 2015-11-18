@@ -1627,7 +1627,7 @@
 "BACT_3016","Campylobacter coli JV20"
 "BACT_3017","Clostridiales genomosp. BVAB3 UPII9-5"
 "BACT_3018","Corynebacterium accolens ATCC 49726"
-"BACT_3020","Corynebacterium efficiens"
+"BACT_3020","Corynebacterium efficiens YS-314"
 "BACT_3021","Corynebacterium glucuronalyticum ATCC 51867"
 "BACT_3022","Corynebacterium jeikeium ATCC 43734"
 "BACT_3024","Desulfovibrio sp. 3_1_syn3"
