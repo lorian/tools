@@ -72,11 +72,13 @@ def process_file(filename,SPLIT_SIZE,IDEAL_FRAGMENT_SIZE,skip_dupes=False):
 			skip_current = False
 			if prev_genome: # if we have a genome in buffer, we need to chop it and write it before handling the new entry
 
-				fa_genomes.write(chop_genome(prev_genome,prev_species,IDEAL_FRAGMENT_SIZE))
+				#fa_genomes.write(chop_genome(prev_genome,prev_species,IDEAL_FRAGMENT_SIZE))
+				fa_genomes.write(prev_species)
+				fa_genomes.write(prev_genome)
 				prev_genome = "" # wipe last genome once it's written
 
 			line = line.replace (" ", "_")
-			if line.find('VIRL') != -1: #ignore viruses
+			if line.find('VIRL') != -1 or line.find('EUKY') != -1: #ignore viruses
 				last_type = 'virus'
 			elif line.find('plasmid') != -1: #just copy plasmids
 				last_type = 'plasmid'
@@ -106,7 +108,9 @@ def process_file(filename,SPLIT_SIZE,IDEAL_FRAGMENT_SIZE,skip_dupes=False):
 
 	# Catch the last genome if it's the last item in the file
 	if prev_genome: # if we have a genome in buffer, we need to chop it and write it before handling the new entry
-		fa_genomes.write(chop_genome(prev_genome,prev_species,IDEAL_FRAGMENT_SIZE))
+		#fa_genomes.write(chop_genome(prev_genome,prev_species,IDEAL_FRAGMENT_SIZE))
+		fa_genomes.write(prev_species)
+		fa_genomes.write(prev_genome)
 		prev_genome = "" # wipe last genome once it's written
 
 	# close files
