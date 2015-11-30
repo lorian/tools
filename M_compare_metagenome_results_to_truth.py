@@ -16,6 +16,7 @@ import urllib
 import urllib2
 import pylab
 import argparse
+import copy
 
 numpy.set_printoptions(precision=4)
 
@@ -471,7 +472,7 @@ def lookup_tax(original_name):
 			taxid = name
 		else:
 			# Clean name for URL use; replace marks that cause problems for NCBI lookup with spaces
-			url_name = urllib.quote_plus(name.translate(string.maketrans("()[]:","	 ").replace('_',' ').strip()))
+			url_name = urllib.quote_plus(name.translate(string.maketrans("()[]:","     ").replace('_',' ').strip()))
 
 			# Look up taxonomy ID
 			handle = Entrez.esearch(db="taxonomy", term=url_name)
@@ -625,8 +626,6 @@ def process_input(filename,truth,fragmented=False):
 	est.set_threshold()
 	est.species = lookup_tax_list(est.species) # from this point on, species are taxids
 
-
-
 	return est
 
 def dataset_truth(dataset):
@@ -704,12 +703,13 @@ def calc_counts_error(truth,est):
 	# normalize counts to only ones that mapped at all:
 	normalization_factor = sum(truth.counts)/sum(est.counts) # total counts/counts assigned
 	normalized_counts = numpy.array(adjusted_counts)*normalization_factor
+
 	diff_n = 100*(numpy.array(normalized_counts) - numpy.array(truth.counts))/numpy.array(truth.counts)
 	print "Average relative error of normalized (by a factor of ,{:.2f}) assigned counts: {:.2f}%".format(normalization_factor,numpy.mean(abs(diff_n)))
 	diff_sq_n = [d*d/10000 for d in diff_n]
 	print "Relative root mean squared error of normalized assigned counts: ,{:.2f}%".format(numpy.mean(diff_sq_n) ** (0.5) * 100)
 
-	return diff_n,normalized_counts,normalization_factor
+	return diff_n,normalized_counts,normalization_factor #diff,adjusted_counts,1
 
 def climb_tree(taxid,dataset):
 	# Given a taxid and a Dataset, calculate the total counts that would end up in that taxid
@@ -731,7 +731,7 @@ def climb_tree_verbose(taxid,dataset):
 
 def calc_kraken_error(truth,est,rank):
 	normalization_factor = sum(truth.counts)/sum(est.counts) # total counts/counts assigned
-	norm_est = est
+	norm_est = copy.deepcopy(est)
 	norm_est.counts = [c*normalization_factor for c in est.counts]
 	# Sensitivity:
 
@@ -771,6 +771,7 @@ def calc_kraken_error(truth,est,rank):
 
 	print "Precision: ,{}/({}+{})".format(C,D,E)
 	print "\t= ,{}".format(C/(D+E))
+	return
 
 def calc_ab_error(truth,est):
 	adjusted_abundance = numpy.zeros(len(truth.species))
@@ -980,7 +981,7 @@ def main(argv=sys.argv):
 	args = parser.parse_args()
 
 	filename = args.filename
-	exp_name = filename.rpartition('.')[0] # will be used for graph-naming purposes
+	exp_name = filename #.rpartition('.')[0] # will be used for graph-naming purposes
 	dataset = args.dataset
 	show_graphs = args.show_graphs
 	save_graphs = args.save_graphs
