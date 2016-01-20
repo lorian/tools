@@ -709,7 +709,7 @@ def calc_counts_error(truth,est):
 	diff_sq_n = [d*d/10000 for d in diff_n]
 	print "Relative root mean squared error of normalized assigned counts: ,{:.2f}%".format(numpy.mean(diff_sq_n) ** (0.5) * 100)
 
-	return diff_n,normalized_counts,normalization_factor #diff,adjusted_counts,1
+	return diff,adjusted_counts,1 #diff_n,normalized_counts,normalization_factor
 
 def climb_tree(taxid,dataset):
 	# Given a taxid and a Dataset, calculate the total counts that would end up in that taxid
@@ -791,6 +791,8 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 	import lanthplot
 	import matplotlib
 	import seaborn
+
+	expname = expname.partition('.txt')[0].replace('.','_') # for latex purposes
 
 	# Drop any entry that is above the desired taxa level
 		# sometimes the strain-level filter filters out species-level genomes, so add truth back in
