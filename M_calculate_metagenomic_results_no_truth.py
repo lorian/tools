@@ -13,6 +13,7 @@ import collections
 import cPickle
 import os
 from Bio import Entrez
+Entrez.email = 'lanthala@berkeley.edu'
 import urllib
 import urllib2
 import pylab
@@ -264,7 +265,7 @@ def collapse_duplicates(raw_data):
 	set_sz = {}
 	set_plasmids = {}
 	for sp,ab,co in dup_data:
-		name = sp.partition('_gi|')[0] #the prepended strain name
+		name = sp.partition('|')[0].partition('_gi')[0] #the prepended strain name
 		set_plasmids.setdefault(name,0) # so there's always a plasmid count value for any given name key
 		if 'plasmid' in sp and not (name == 'ralstonia_eutropha_h16' or name == 'cupriavidus_necator_h16'):
 			set_plasmids[name] += co
