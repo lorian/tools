@@ -157,13 +157,8 @@ def lookup_tax(ncbi_ref,raw_name):
 			official_name = raw_name.partition('contig')[0].partition('Contig')[0].partition('chr')[0].partition('Chr')[0].strip('_')
 
 
-		if type(ncbi_ref) == int or ncbi_ref.isdigit():
-			tax_entry = tax_dict.add_taxa(official_name,official_name,taxid,lineage)
-			tax_entry = tax_dict.add_taxa(ncbi_ref,official_name,taxid,lineage)
-			print "{} -> {}".format(ncbi_ref,official_name)
-		else:
-			tax_entry = tax_dict.add_taxa(ncbi_ref,official_name,taxid,lineage)
-			print "{} -> {}".format(ncbi_ref,official_name)
+		tax_entry = tax_dict.add_taxa(official_name.replace(' ','_'),official_name,taxid,lineage)
+		print "{} -> {}".format(ncbi_ref,official_name)
 
 		if '2759' in lineage.values(): # catch eukaryotes
 			print "\t\t\tWarning: {} appears to be a eukaryote!".format(ncbi_ref)
@@ -201,6 +196,14 @@ def main():
 		cPickle.dump(tax_dict,open('ncbi_ref_taxonomy.pickle','wb'))
 		print "Saving unique strains..."
 		cPickle.dump(unique_strains,open('ncbi_ref_strains.pickle','wb'))
+
+	# Pick one strain per species
+	for st in unique_strains:
+		st_taxa = tax_dict.get_taxa_by_name(st)
+		unique_species.add(st_taxa.filter_tier_exact('species'))
+	print len(unique_strains)
+	print len(unique_species)
+
 
 if __name__ == "__main__":
 	main()
