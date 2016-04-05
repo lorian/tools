@@ -7,7 +7,7 @@ def count_sp(fastas):
 	# pick out unique species in directory files
 	unique_species = collections.Counter()
 	for f in fastas:
-		name = f.partition('GCA')[0].partition('gca')[0].strip('_').strip('.')
+		name = f.partition('GCA')[0].partition('gca')[0].partition('.')[0].strip('_').strip('.')
 		name_parts = name.split('_')
 		if len(name_parts) == 2: # just the species is left
 			unique_species.update([name])
