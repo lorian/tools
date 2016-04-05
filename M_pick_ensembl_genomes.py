@@ -20,7 +20,7 @@ def count_sp(fastas):
 	return unique_species
 
 def main():
-	fastas = [d for d in os.listdir('.') if d.endswith('dna.genome.fa')]
+	fastas = [d for d in os.listdir('.') if (d.endswith('dna.genome.fa') or d.endswith('cdna.all.fa')]
 	unique_species = count_sp(fastas)
 
 	print unique_species.most_common(50)
