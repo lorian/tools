@@ -20,23 +20,34 @@ def count_sp(fastas):
 	return unique_species
 
 def main():
-	fastas = [d for d in os.listdir('.') if (d.endswith('dna.genome.fa') or d.endswith('cdna.all.fa')]
+	fastas = [d for d in os.listdir('.') if (d.endswith('dna.genome.fa') or d.endswith('cdna.all.fa'))]
 	unique_species = count_sp(fastas)
 
 	print unique_species.most_common(50)
-	print len(unique_species)
+	print "{} species".format(len(unique_species))
 	thin_species = [u for u,c in unique_species.most_common(50) if c>100]
 	fastas_delete = []
+	'''
 	for sp in thin_species: #remove half of each species' strains
 		skipnext = False
 		for f in fastas:
-			if sp+"_" in f or sp+"." in f: # handle case where one sp is a longer version of other sp name
+			if sp+"_" in f or sp+"." in f: # avoid case where one sp is a longer version of other sp name
 				if skipnext:
 					fastas_delete.append(f)
 					os.system("mv {} ignore/".format(f))
 					skipnext = False
 				else:
 					skipnext = True
+	'''
+	fastas_size = dict()
+	for sp in thin_species: #only keep largest strain of each species
+		for f in fastas:
+			if sp+"_" in f or sp+"." in f: # avoid case where one sp is a longer version of other sp name
+				fastas_size[f] = os.path.getsize(f)
+		print max(fastas_size.values())
+		big_sp = (key for key,value in fastas_size.items() if value == max(fastas_size.values())).next()
+		print big_sp
+		print os.path.getsize(big_sp)
 
 	print count_sp(fastas_delete)
 
