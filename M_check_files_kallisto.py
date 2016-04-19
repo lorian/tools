@@ -8,7 +8,8 @@ def split_files(f):
 	split_B = f[len(f)/2:]
 	return split_A,split_B
 
-bad_files = [f for f in os.listdir('.') if f.endswith('.cdna.all.fa')].reverse()
+bad_files = [f for f in os.listdir('.') if f.endswith('.cdna.all.fa')]
+bad_files.reverse()
 
 for f in bad_files:
 	if test_kallisto([f]):
