@@ -2,8 +2,8 @@ import os
 
 def find_sp(fastas):
 	# get a list of species from a list of filenames:
+	unique_species = []
 	for f in fastas:
-		unique_species = []
 		name = f.partition('GCA')[0].partition('gca')[0].partition('.')[0].strip('_').strip('.')
 		name_parts = name.split('_')
 		if len(name_parts) == 2: # just the species is left
