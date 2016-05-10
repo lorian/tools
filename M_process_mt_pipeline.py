@@ -10,8 +10,9 @@ with open('species_hits.txt','r') as hits_file:
 
 failed_hits = []
 for sp in hits:
-	names = [sp.replace(" ","_").lower(), sp.replace(" ","_"), sp.replace(" ","_").lower().replace('.',"").replace("-","_").replace("(","_").replace(")","_").replace("+","_").replace('[',"").replace(']',"").replace("/","_"), sp.replace(" ","_").replace('.',"").replace("-","_").replace("(","_").replace(")","_").replace("+","_").replace('[',"").replace(']',"").replace("/","_")]
-	genuses = [sp.replace(" ","_").lower().partition('_')[0], sp.replace(" ","_").lower().partition('_')[0]]
+	cleanup = string.maketrans('-()+/','_____')
+	names = [sp.replace(" ","_").lower(), sp.replace(" ","_"), sp.replace(" ","_").lower().translate(cleanup,'.[]'), sp.replace(" ","_").translate(cleanup, '.[]')]
+	genuses = [sp.replace(" ","_").lower().partition('_')[0], sp.replace(" ","_").partition('_')[0]]
 	success = False
 	for name in names: # iterate over possible name forms until one gets a hit
 		output = os.system("mv {}* ../".format(name))
