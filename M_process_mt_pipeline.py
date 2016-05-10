@@ -3,6 +3,7 @@
 import csv
 import os
 import pprint
+import string
 
 with open('species_hits.txt','r') as hits_file:
 	hits_csv = csv.reader(hits_file, delimiter=',')
