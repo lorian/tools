@@ -16,7 +16,7 @@ for sp in hits:
 		name = name.replace('.',"").replace("-","_").replace("(","_").replace(")","_").replace("+","_").replace('[',"").replace(']',"").replace("/","_")
 		output = os.system("mv {}* ../".format(name))
 		if output != 0:
-			name = sp.partition('_')[0] # get whole genus
+			name = name.partition('_')[0] # get whole genus
 			output = os.system("mv {}* ../".format(name))
 			failed_hits.append(sp)
 
