@@ -1,4 +1,4 @@
-# Move all transcriptomes matching species in text file up a directory
+# Move all files matching species in text file up a directory
 
 import csv
 import os
@@ -10,15 +10,18 @@ with open('species_hits.txt','r') as hits_file:
 
 failed_hits = []
 for sp in hits:
-	name = sp.lower().replace(" ","_")
-	output = os.system("mv {}* ../".format(name))
-	if output != 0: # mv can't match
-		name = name.replace('.',"").replace("-","_").replace("(","_").replace(")","_").replace("+","_").replace('[',"").replace(']',"").replace("/","_")
+	names = [sp.replace(" ","_").lower(), sp.replace(" ","_"), sp.replace(" ","_").lower().replace('.',"").replace("-","_").replace("(","_").replace(")","_").replace("+","_").replace('[',"").replace(']',"").replace("/","_"), sp.replace(" ","_").replace('.',"").replace("-","_").replace("(","_").replace(")","_").replace("+","_").replace('[',"").replace(']',"").replace("/","_")]
+	genuses = [sp.replace(" ","_").lower().partition('_')[0], sp.replace(" ","_").lower().partition('_')[0]]
+	success = False
+	for name in names: # iterate over possible name forms until one gets a hit
 		output = os.system("mv {}* ../".format(name))
-		if output != 0:
-			name = name.partition('_')[0] # get whole genus
-			output = os.system("mv {}* ../".format(name))
-			failed_hits.append(sp)
+		if output == 0:
+			success = True
+			break
+	if not success:
+		failed_hits.append(sp)
+		for genus in genuses: # iterate over just genus name
+			output = os.system("mv {}* ../".format(genus))
 
 pprint.pprint(failed_hits)
 print len(failed_hits)
