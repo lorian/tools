@@ -7,8 +7,7 @@ import string
 
 with open('species_hits.txt','r') as hits_file:
 	hits_csv = csv.reader(hits_file, delimiter=',')
-	hits_data = [r for f in hits_csv]
-	hits = [r[0] for r in hits_data if float(r[1])>10000]
+	hits = [r[0] for r in hits_csv if float(r[1])>10000]
 
 failed_hits = []
 for sp in hits:
