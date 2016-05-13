@@ -491,6 +491,7 @@ def process_input(filename,program,truth,fragmented=False):
 		est = cPickle.load(open(filename +'.p','rb'))
 		est.set_threshold()
 		est.species = lookup_tax_list(est.species) # from this point on, species are taxids
+		est.remake_index()
 		return est
 		#input_table = cPickle.load(open(filename +'.p','rb'))
 	else:
@@ -565,10 +566,10 @@ def process_input(filename,program,truth,fragmented=False):
 	est.sort_by_name()
 	est.set_threshold()
 
+	cPickle.dump(est,open(filename +'.p','wb'))
+
 	if not transcripts:
 		est.species = lookup_tax_list(est.species) # from this point on, species are taxids
-
-	cPickle.dump(est,open(filename +'.p','wb'))
 
 	est.remake_index()
 	return est
@@ -579,7 +580,7 @@ def dataset_truth(dataset='i100'):
 	truth = Dataset()
 	# for metatranscriptome test
 	if dataset == 'simmt_have':
-		i100_csv = [r for r in csv.reader(open('simmt_truth_have.csv','r'), 'excel')]
+		i100_csv = [r for r in csv.reader(open('simmt_truth_have_old.csv','r'), 'excel')]
 	elif dataset == 'simmt_all':
 		i100_csv = [r for r in csv.reader(open('simmt_truth_fixed.csv','r'), 'excel')]
 	elif dataset == 'simmt_transcripts':
@@ -631,7 +632,6 @@ def calc_counts_error(truth,est):
 
 	# normalize counts to only ones that mapped at all:
 	normalization_factor = sum(truth.counts)/sum(est.counts) # total counts/counts assigned
-	#normalization_factor = 1
 	normalized_counts = numpy.array(adjusted_counts)*normalization_factor
 
 	diff_n = 100*(numpy.array(normalized_counts) - numpy.array(truth.counts))/numpy.array(truth.counts)
@@ -801,9 +801,9 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		print truth.species.index('frankia_sp_ean1pec_7975318..7976595')
 		'''
 		present = zip(all_species,all_true,all_est)
-		#present.sort(key=lambda x: x[1], reverse=True)
+		present.sort(key=lambda x: x[1], reverse=True)
 		#pprint.pprint([p for p in present if p[0].startswith('Pseudomonas')])
-		#present = present[10000:10500]
+		present = present[:500]
 		present_species, present_true, present_est = zip(*present)
 
 		if not transcripts:
