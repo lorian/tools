@@ -7,7 +7,7 @@
 import csv
 import argparse
 import pprint
-import container
+import collections
 
 parser = argparse.ArgumentParser(description='Process kallisto pseudosam and remove all reads that pseudoaligned')
 parser.add_argument('samname', help='kallisto pseudosam')
@@ -16,7 +16,9 @@ args = parser.parse_args()
 with open(args.samname,'r') as sam_file:
 	sam_csv = csv.reader(sam_file, delimiter='\t')
 	sam_data = [r for r in sam_csv]
-	matched_reads = []
+	matched_reads = set()
 	for r in sam_data:
-		print r[0]
-		#matched_reads.append()
+		if not r[0].startswith('@SQ'):
+			matched_reads.add(r[0])
+
+pprint.pprint(matched_reads)
