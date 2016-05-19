@@ -1,9 +1,11 @@
 # go through read files, keep only reads that don't match pseudobam plus their next line
+# Note: read files must be checked individually
 
 import csv
 import argparse
 import pprint
 import collections
+import os
 
 parser = argparse.ArgumentParser(description='Process kallisto pseudosam and remove all reads that pseudoaligned')
 parser.add_argument('samname', help='kallisto pseudosam')
@@ -18,16 +20,27 @@ with open(args.samname,'r') as sam_file:
 		if not r[0].startswith('@SQ'):
 			matched_reads.add(r[0])
 
+mapped_sam = samname.partition('.')[0] + "_mapped.sam"
+if not os.path.isfile(mapped_sam):
+	os.system('samtools view -S -F 4 {} > {}'.format(samname,mapped_sam))
+
+new_reads = open(args.readsname.partition(".")[0] + "_filtered.fastq","w")
+
 with open(args.readsname,'r') as read_file:
 	read_csv = csv.reader(read_file, delimiter=' ')
 	read_data = [r for r in read_csv]
 	ready_to_delete = False
 	for r in read_data:
-		if len(r) > 1 and r[0][1:] in matched_reads: # remove @ from start of line
-			print r[0]
+		if len(r) > 1: #read header
+			if r[0][1:] in matched_reads: # remove @ from start of line
+				ready_to_delete = True
+			else:
+				ready_to_delete = False
 
-		#if not r[0].startswith('@SQ'):
-		#	matched_reads.add(r[0])
+		if not ready_to_delete:
+			new_reads.write(" ".join(r,).strip()+"\n")
 
-
+new_reads.close()
 print len(matched_reads)
+
+
