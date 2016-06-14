@@ -438,6 +438,9 @@ def lookup_tax(original_name):
 		else:
 			lineage[taxon['Rank']] = taxid
 
+		if official_name.startswith('[Eubacterium'): # special case handling
+			lineage['genus'] = '1730'
+
 		if type(name) == int or name.isdigit():
 			tax_entry = tax_dict.add_taxa(official_name,official_name,taxid,lineage)
 			tax_entry = tax_dict.add_taxa(original_name,official_name,taxid,lineage)
@@ -584,7 +587,7 @@ def dataset_truth(dataset='i100'):
 	elif dataset == 'simmt_all':
 		i100_csv = [r for r in csv.reader(open('simmt_truth_fixed.csv','r'), 'excel')]
 	elif dataset == 'simmt_transcripts':
-		i100_csv = [r for r in csv.reader(open('simmt_truth_transcripts_have.csv','r'), 'excel')]
+		i100_csv = [r for r in csv.reader(open('simmt_truth_transcripts_old.csv','r'), 'excel')]
 	else: # actual i100
 		i100_csv = [r for r in csv.reader(open('i100_truth.csv','r'), 'excel')]
 
@@ -699,7 +702,7 @@ def calc_kraken_error(truth,est,rank):
 	print "Precision: ,{}/({}+{})".format(C,D,E)
 	print "\t= ,{}".format(C/(D+E))
 
-def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor, show_graphs, save_graphs):
+def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor, show_graphs, save_graphs, errors):
 	# These imports are here so script can run on server w/out graphics
 	import plotfunctions
 	import matplotlib
@@ -713,7 +716,8 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		filtered_names = list(set(est.species).union(set(truth.species)))
 
 	filtered_est = Dataset()
-	filtered_est.set_by_array([(sp,0,est.lookup_count(sp)) for sp in filtered_names])
+	filtered_est.set_by_array([(sp,errors[sp],est.lookup_count(sp)) for sp in filtered_names])
+	# abundance field contains stdev errors
 
 	if transcripts:
 		filtered_true = Dataset()
@@ -725,22 +729,20 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		all_species = filtered_est.species
 		true_abundance = truth.counts
 		est_abundance = filtered_est.counts
-		true_species = truth.species
-		est_species = filtered_est.species
-		true_sp = true_species
+		true_sp = truth.species
 		assert len(filtered_est.species) == len(filtered_true.species)
 
 	if not transcripts:
-		true_species = [tax_dict.get_name_by_id(s) for s in truth.species]
-		est_species = [tax_dict.get_name_by_id(s) for s in filtered_est.species]
+		truth.species = [tax_dict.get_name_by_id(s) for s in truth.species]
+		filtered_est.species = [tax_dict.get_name_by_id(s) for s in filtered_est.species]
 
 		true_abundance = truth.counts
 		est_abundance = list(numpy.array(filtered_est.counts)*norm_factor)
-		true_sp = true_species
-		all_species = list(set(est_species + true_species))
+		true_sp = truth.species
+		all_species = list(set(filtered_est.species + truth.species))
 
-		all_est = [est_abundance[est_species.index(sp)] if sp in est_species else 0 for sp in all_species]
-		all_true = [true_abundance[true_species.index(sp)] if sp in true_species else 0 for sp in all_species]
+		all_est = [est_abundance[filtered_est.species.index(sp)] if sp in filtered_est.species else 0 for sp in all_species]
+		all_true = [true_abundance[truth.species.index(sp)] if sp in truth.species else 0 for sp in all_species]
 
 		# print present species
 		disp_ab = zip(all_species,all_est)
@@ -758,8 +760,8 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 			all_diff.append(0) # if both the estimate and the actual are 0, we're good here
 
 	# graph true abundances
-	if len(all_species) == len(true_species):
-		xmax = len(true_species)
+	if len(all_species) == len(truth.species):
+		xmax = len(truth.species)
 		x = numpy.array(range(0,xmax))
 
 		ab_filter = zip(true_sp,true_abundance,adjusted_abundance)
@@ -780,7 +782,7 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 
 	# graph abundances for all species, not just the true ones, if above mean
 	else:
-		if len(est.species) - est_abundance.count(0) > len(true_species)*1.25:
+		if len(est.species) - est_abundance.count(0) > len(truth.species)*1.25:
 				mean_ab = min(true_abundance)*2#/10 #10% of lowest actual count in truth
 				print "Filtering out any estimated results under {} counts".format(mean_ab)
 		else:
@@ -793,33 +795,29 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		est.species = all_species
 		est.counts = all_est
 
-		'''
-		print truth.lookup_count('Frankia sp. EAN1pec 7975318..7976595')
-		print truth.lookup_count('frankia_sp_ean1pec_7975318..7976595')
-		print [t for t in truth.counts_by_sp.keys() if t.startswith("Frankia sp. EAN1pec 7975318")]
-		print [t for t in truth.species if t.startswith("frankia_sp_ean1pec_7975318..7976595")]
-		print truth.species.index('frankia_sp_ean1pec_7975318..7976595')
-		'''
 		present = zip(all_species,all_true,all_est)
 		present.sort(key=lambda x: x[1], reverse=True)
-		#pprint.pprint([p for p in present if p[0].startswith('Pseudomonas')])
-		present = present[:500]
+
+		if transcripts:
+			present = present[:500]
 		present_species, present_true, present_est = zip(*present)
 
 		if not transcripts:
 			present_true = []
 			present_est = []
 			present_species = []
+			present_errors = []
 
 			for i,sp in enumerate(all_species):
-				if (sp in true_species) or (sp in est_species and est_abundance[est_species.index(sp)]>mean_ab): #only include species if it has a non-zero estimate or non-zero actual abundance
+				if (sp in truth.species) or (sp in filtered_est.species and est_abundance[filtered_est.species.index(sp)]>mean_ab): #only include species if it has a non-zero estimate or non-zero actual abundance
 					present_species.append(sp)
+					#present_errors.append()
 					try:
-						present_est.append(est_abundance[est_species.index(sp)])
+						present_est.append(est_abundance[filtered_est.species.index(sp)])
 					except:
 						present_est.append(0)
 					try:
-						present_true.append(true_abundance[true_species.index(sp)])
+						present_true.append(true_abundance[truth.species.index(sp)])
 					except:
 						present_true.append(0)
 
@@ -848,7 +846,7 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 
 	return
 
-def graph_est(est, expname, tier, show_graphs, save_graphs):
+def graph_est(est, expname, tier, show_graphs, save_graphs, errors):
 	# These imports are here so script can run on server w/out graphics
 	import plotfunctions
 	import matplotlib
@@ -880,12 +878,12 @@ def graph_est(est, expname, tier, show_graphs, save_graphs):
 	all_filter = zip(present_sp,present_est)
 	all_filter.sort( key=lambda x: x[1],reverse=True )
 	fil_sp,fil_est = zip(*all_filter)
-	fil_est = numpy.log(fil_est)
+	#fil_est = numpy.log(fil_est)
 
 	plotfunctions.plot_setup_pre(
-		"Second pass genome-based {}-level estimated counts above 1000"
+		"Human gut metatranscriptome {}-level estimated counts"
 		.format(tier), xlabels = fil_sp, xticks = range(0,xmax),
-		xrotation = -90, yaxislabel = 'Log Counts')
+		xrotation = -90, yaxislabel = 'Counts')
 
 	plotfunctions.plot(x, fil_est, color='red', plot_type = 'scatter')
 	matplotlib.pyplot.gca().set_ylim(bottom=0.)
@@ -912,6 +910,7 @@ def main(argv=sys.argv):
 	parser.add_argument('-s','--save-graphs', action='store_true', help='Save graphs of calculated errors to file')
 	parser.add_argument('--taxa', default='all', help='Desired taxa level of analysis. Accepts one of: strain, species, genus, phylum. Defaults to all levels.')
 	parser.add_argument('--dataset', default='i100', help='Dataset truth to be compared to. Accepts: i100, simmt_have, simmt_all, simmt_transcripts, no_truth. Defaults to i100.')
+	parser.add_argument('--bootstraps', default='none', help='Directory containing .tsv files for kallisto bootstraps, to be converted into errors.')
 
 	args = parser.parse_args()
 
@@ -946,6 +945,16 @@ def main(argv=sys.argv):
 		true_j_genus = collapse_strains(truth,'genus')
 		true_j_phylum = collapse_strains(truth,'phylum')
 
+	bootstrap_counts = collections.defaultdict(int)
+	if args.bootstraps:
+		# process each file with process_input, then make summary stats
+		bootstraps = [f for f in os.listdir(args.bootstraps) if f.endswith('.tsv')]
+		bootstrap_ests = []
+		for f in bootstraps:
+			bootstrap_ests.append(process_input(os.path.join(args.bootstraps,f),program,truth))
+		for s in estimated.species: # collect counts for each species from each bootstrap
+			bootstrap_counts[s] = numpy.std([b.lookup_count(s) for b in bootstrap_ests])
+
 	if pickle_len != len(tax_dict.names.keys()): # don't re-pickle if nothing new is added
 		print "Saving taxonomy dict..."
 		cPickle.dump(tax_dict,open('species_taxonomy.pickle','wb'))
@@ -974,7 +983,7 @@ def main(argv=sys.argv):
 			#	print "\tPrecision and sensitivity:"
 			#	calc_kraken_error(true,est,label)
 			if show_graphs or save_graphs:
-				graph_error(true, est, adjusted_abundance, diff, exp_name, label, norm_factor, show_graphs, save_graphs)
+				graph_error(true, est, adjusted_abundance, diff, exp_name, label, norm_factor, show_graphs, save_graphs, bootstrap_counts)
 
 if __name__ == "__main__":
 	main()
