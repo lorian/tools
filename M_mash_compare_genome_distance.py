@@ -20,4 +20,4 @@ with open(args.filename,'r') as mash_file:
 	mash_data = [r for r in mash_csv]
 	for r in mash_data:
 		if r[0] != r[1] and r[2] != '1': # ignore self-self comparisons, and completely unrelated genomes
-			print r
+			print '\t'.join(r)
