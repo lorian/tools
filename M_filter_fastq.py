@@ -12,7 +12,7 @@ parser.add_argument('keepreads', help='Phrase fastq header must contain in order
 parser.add_argument('readsname', help='fastq containing original reads')
 args = parser.parse_args()
 
-new_reads = open(args.readsname.partition(".")[0] + "_{}.fastq".format(keepreads),"w")
+new_reads = open(args.readsname.partition(".")[0] + "_{}.fastq".format(args.keepreads),"w")
 
 with open(args.readsname,'r') as read_file:
 	read_csv = csv.reader(read_file, delimiter=' ')
@@ -20,7 +20,7 @@ with open(args.readsname,'r') as read_file:
 	ready_to_keep = False
 	for r in read_data:
 		if len(r) > 1: #read header
-			if keepreads in r[0][1:]: # remove @ from start of line
+			if args.keepreads in r[0][1:]: # remove @ from start of line
 				ready_to_keep = True
 			else:
 				ready_to_keep = False
