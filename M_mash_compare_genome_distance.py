@@ -20,5 +20,5 @@ with open(args.filename,'r') as mash_file:
 	mash_data = [r for r in mash_csv]
 	for r in mash_data:
 		# ignore self-self comparisons, and completely unrelated genomes, and low-k-mer matches:
-		if r[0] != r[1] and r[2] != '1' and int(r[4].partition("/")[0]) > 9:
+		if r[0] != r[1] and r[2] != '1' and int(r[4].partition("/")[0]) > 99:
 			print '\t'.join(r)
