@@ -18,10 +18,12 @@ with open(args.readsname,'r') as read_file:
 	read_csv = csv.reader(read_file, delimiter=' ')
 	read_data = [r for r in read_csv]
 	ready_to_keep = False
+	print "Processing data..."
 	for r in read_data:
-		if len(r) > 1: #read header
+		if r[0].startswith('@'): #read header
 			if args.keepreads in r[0][1:]: # remove @ from start of line
 				ready_to_keep = True
+				print r[0][1:]
 			else:
 				ready_to_keep = False
 
@@ -29,6 +31,5 @@ with open(args.readsname,'r') as read_file:
 			new_reads.write(" ".join(r,).strip()+"\n")
 
 new_reads.close()
-print len(matched_reads)
 
 
