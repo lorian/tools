@@ -12,10 +12,14 @@ parser.add_argument('samname', help='kallisto pseudosam')
 parser.add_argument('readsname', help='fastq containing original reads')
 args = parser.parse_args()
 
+'''
 mapped_sam = args.samname.partition('.')[0] + "_mapped.sam"
 if not os.path.isfile(mapped_sam):
 	# Only keep mapped reads
 	os.system('samtools view -S -F 4 {} > {}'.format(args.samname,mapped_sam))
+'''
+# use raw sam:
+mapped_sam = args.samname
 
 with open(mapped_sam,'r') as sam_file:
 	sam_csv = csv.reader(sam_file, delimiter='\t')
@@ -25,7 +29,7 @@ with open(mapped_sam,'r') as sam_file:
 		if not r[0].startswith('@SQ'):
 			matched_reads.add(r[0])
 
-new_reads = open(args.readsname.partition(".")[0] + "_filtered.fastq","w")
+new_reads = open(args.readsname.partition(".")[0] + "_filtered_raw.fastq","w")
 
 with open(args.readsname,'r') as read_file:
 	read_csv = csv.reader(read_file, delimiter=' ')
