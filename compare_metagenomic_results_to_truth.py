@@ -19,6 +19,7 @@ import urllib2
 import argparse
 import copy
 import pprint
+import scipy.stats
 
 numpy.set_printoptions(precision=4)
 
@@ -727,23 +728,20 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		all_est = filtered_est.counts
 		all_true = filtered_true.counts
 		all_species = filtered_est.species
-		true_abundance = truth.counts
-		est_abundance = filtered_est.counts
-		true_sp = truth.species
 		assert len(filtered_est.species) == len(filtered_true.species)
 
 	if not transcripts:
 		truth.species = [tax_dict.get_name_by_id(s) for s in truth.species]
+		truth.remake_index()
 		filtered_est.species = [tax_dict.get_name_by_id(s) for s in filtered_est.species]
+		filtered_est.counts = list(numpy.array(filtered_est.counts)*norm_factor)
+		filtered_est.remake_index()
 
-		true_abundance = truth.counts
-		est_abundance = list(numpy.array(filtered_est.counts)*norm_factor)
-		true_sp = truth.species
-		all_species = list(set(filtered_est.species + truth.species))
+		all_species = filtered_est.species
+		all_est = [filtered_est.counts[filtered_est.species.index(sp)] if sp in filtered_est.species else 0 for sp in filtered_est.species]
+		all_true = [truth.counts[truth.species.index(sp)] if sp in truth.species else 0 for sp in filtered_est.species]
 
-		all_est = [est_abundance[filtered_est.species.index(sp)] if sp in filtered_est.species else 0 for sp in all_species]
-		all_true = [true_abundance[truth.species.index(sp)] if sp in truth.species else 0 for sp in all_species]
-
+		'''
 		# print present species
 		disp_ab = zip(all_species,all_est)
 		cutoff_ab = sorted(disp_ab, reverse=True, key=lambda x:x[1])
@@ -751,6 +749,7 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 			for ab in cutoff_ab:
 				cutoff_file.write("{},{}\n".format(ab[0],ab[1]))
 		print len(cutoff_ab)
+		'''
 
 	all_diff = []
 	for i,a in enumerate(all_est):
@@ -760,11 +759,11 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 			all_diff.append(0) # if both the estimate and the actual are 0, we're good here
 
 	# graph true abundances
-	if len(all_species) == len(truth.species):
+	if len(filtered_est.species) == len(truth.species):
 		xmax = len(truth.species)
 		x = numpy.array(range(0,xmax))
 
-		ab_filter = zip(true_sp,true_abundance,adjusted_abundance)
+		ab_filter = zip(truth.species,truth.counts,adjusted_abundance)
 		ab_filter.sort( key=lambda x: x[1],reverse=True )
 		ab_species,ab_true,ab_adjusted = zip(*ab_filter)
 
@@ -782,8 +781,8 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 
 	# graph abundances for all species, not just the true ones, if above mean
 	else:
-		if len(est.species) - est_abundance.count(0) > len(truth.species)*1.25:
-				mean_ab = min(true_abundance)*2#/10 #10% of lowest actual count in truth
+		if len(est.species) - filtered_est.counts.count(0) > len(truth.species)*1.25:
+				mean_ab = min(truth.counts)*2#/10 #10% of lowest actual count in truth
 				print "Filtering out any estimated results under {} counts".format(mean_ab)
 		else:
 			mean_ab = 1
@@ -801,6 +800,7 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		if transcripts:
 			present = present[:500]
 		present_species, present_true, present_est = zip(*present)
+		present_errors = [0]*500
 
 		if not transcripts:
 			present_true = []
@@ -808,36 +808,32 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 			present_species = []
 			present_errors = []
 
-			for i,sp in enumerate(all_species):
-				if (sp in truth.species) or (sp in filtered_est.species and est_abundance[filtered_est.species.index(sp)]>mean_ab): #only include species if it has a non-zero estimate or non-zero actual abundance
-					present_species.append(sp)
-					#present_errors.append()
-					try:
-						present_est.append(est_abundance[filtered_est.species.index(sp)])
-					except:
-						present_est.append(0)
-					try:
-						present_true.append(true_abundance[truth.species.index(sp)])
-					except:
-						present_true.append(0)
+			for i,sp in enumerate(filtered_est.species):
+				if sp in truth.species or filtered_est.lookup_count(sp)>mean_ab: #only include species if it has a non-zero estimate or non-zero actual abundance
+					present_species.append(sp.replace('_',' ')) # presentation names
+					present_errors.append(filtered_est.lookup_abundance(sp))
+					present_est.append(filtered_est.lookup_count(sp))
+					present_true.append(truth.lookup_count(sp))
 
 		xmax = len(present_species)
-		present_sp = [x.replace('_',' ') for x in present_species]
 		x = numpy.array(range(0,xmax))
 
 		# sort based on true counts, then sort false positives by est counts
-		all_filter = zip(present_sp,present_true,present_est)
-		all_filter.sort( key=lambda x: x[2],reverse=True )
-		all_filter.sort( key=lambda x: x[1],reverse=True )
-		fil_sp,fil_true,fil_est = zip(*all_filter)
+		all_sort = zip(present_species,present_true,present_est,present_errors)
+		all_sort.sort( key=lambda x: x[2],reverse=True )
+		all_sort.sort( key=lambda x: x[1],reverse=True )
+		all_sort.sort(key=lambda x: x[0]) #sort by name
+		for r in all_sort:
+			print r
+		present_species,present_true,present_est,present_errors = zip(*all_sort)
 
 		plotfunctions.plot_setup_pre(
 			"Estimated counts at {}-level"
 			.format(tier), xticks = range(0,xmax),
-			xrotation = -90, yaxislabel = 'Counts', xlabels = fil_sp)
+			xrotation = -90, yaxislabel = 'Counts', xlabels = present_species)
 
-		plotfunctions.plot(x, fil_true, color='blue', label="True")
-		plotfunctions.plot(x, fil_est, color='red', label="Estimated", plot_type = 'scatter')
+		plotfunctions.plot(x, present_true, color='blue', label="True")
+		plotfunctions.plot(x, present_est, plot_type = 'error', color='red', label="Estimated", fmt='o', yerr=present_errors)
 		matplotlib.pyplot.gca().set_ylim(bottom=0.)
 		if save_graphs:
 			plotfunctions.plot_setup_post(save_file = expname +'_'+ tier +'_sigcounts.png', show=show_graphs)
@@ -910,7 +906,7 @@ def main(argv=sys.argv):
 	parser.add_argument('-s','--save-graphs', action='store_true', help='Save graphs of calculated errors to file')
 	parser.add_argument('--taxa', default='all', help='Desired taxa level of analysis. Accepts one of: strain, species, genus, phylum. Defaults to all levels.')
 	parser.add_argument('--dataset', default='i100', help='Dataset truth to be compared to. Accepts: i100, simmt_have, simmt_all, simmt_transcripts, no_truth. Defaults to i100.')
-	parser.add_argument('--bootstraps', default='none', help='Directory containing .tsv files for kallisto bootstraps, to be converted into errors.')
+	parser.add_argument('--bootstraps', default='', help='Directory containing .tsv files for kallisto bootstraps, to be converted into errors.')
 
 	args = parser.parse_args()
 
@@ -953,7 +949,10 @@ def main(argv=sys.argv):
 		for f in bootstraps:
 			bootstrap_ests.append(process_input(os.path.join(args.bootstraps,f),program,truth))
 		for s in estimated.species: # collect counts for each species from each bootstrap
-			bootstrap_counts[s] = numpy.std([b.lookup_count(s) for b in bootstrap_ests])
+			#bootstrap_counts[s] = numpy.std([b.lookup_count(s) for b in bootstrap_ests])
+			bs = [b.lookup_count(s) for b in bootstrap_ests]
+			ci = scipy.stats.t.interval(0.99, len(bs)-1, loc=numpy.mean(bs), scale=scipy.stats.sem(bs))
+			bootstrap_counts[s] = int((ci[1] - ci[0])/2)
 
 	if pickle_len != len(tax_dict.names.keys()): # don't re-pickle if nothing new is added
 		print "Saving taxonomy dict..."
