@@ -15,7 +15,7 @@ for arg in iterarg:
 file_list = [f for f in os.listdir(dirname) if f.endswith('dna.genome.fa')]
 
 for f in file_list:
-	basename = f.lpartition('.')[0]
+	basename = f.partition('.')[0]
 	mfa = open(os.path.join(dirname,f),'r')
 
 	text = ""
@@ -23,8 +23,10 @@ for f in file_list:
 	firstline = True
 	for line in mfa:
 		if firstline:
-#			text = '>' + basename.replace (" ", "_") + " " + line[1:] #add name to beginning of ID line
-			text = line
+			if line.find('|') == -1:
+				text = '>' + basename.replace (" ", "_") + " " + line[1:] #add name to beginning of ID line
+			else:
+				text = line
 			firstline = False
 		elif line.startswith('>'):
 			text += 'NNNNNNNNNN' #indicate possible gaps between chr, plasmids, shotgun pieces, etc
