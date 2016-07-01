@@ -15,7 +15,7 @@ for arg in iterarg:
 file_list = [f for f in os.listdir(dirname) if f.endswith('dna.genome.fa')]
 
 for f in file_list:
-	basename = f.partition('.')[0]
+	basename = f.partition('.dna.genome.fa')[0]
 	mfa = open(os.path.join(dirname,f),'r')
 
 	text = ""
@@ -24,7 +24,7 @@ for f in file_list:
 	for line in mfa:
 		if firstline:
 			if line.find('|') == -1:
-				text = '>' + basename.replace (" ", "_") + " " + line[1:] #add name to beginning of ID line
+				text = '>' + basename.replace (" ", "_") + "|" + line[1:] #add name to beginning of ID line
 			else:
 				text = line
 			firstline = False
