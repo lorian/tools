@@ -24,7 +24,8 @@ for f in file_list:
 	for line in mfa:
 		if firstline:
 			if line.find('|') == -1:
-				text = '>' + basename.replace (" ", "_") + "|" + line[1:] #add name to beginning of ID line
+				# add name to beginning of header
+				text = '>' + basename.partition('.')[0].replace (" ", "_") + "|" + line[1:]
 			else:
 				text = line
 			firstline = False
