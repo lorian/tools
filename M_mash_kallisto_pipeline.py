@@ -5,6 +5,7 @@ Bacillus_atrophaeus_1942.GCA_000165925.1.30.dna.genome.fa       /home/lorian/scr
 Bacillus_bombysepticus_str_wang.GCA_000831065.1.30.dna.genome.fa        /home/lorian/scratch/illumina_100species_trimmed.1.fq   0.197292        2.3647e-28      8/1000
 '''
 
+# run from inside directory with ALL genomes; will move genomes one level up
 import csv
 import argparse
 import pprint
@@ -32,6 +33,30 @@ def count_sp(fastas):
 		unique_species.update([sp_name])
 	return unique_species
 
+def collapse_contigs(f):
+	basename = f.partition('.dna.genome.fa')[0].partition('.mfa')[0]
+	mfa = open(os.path.join(dirname,f),'r')
+
+	text = ""
+
+	firstline = True
+	for line in mfa:
+		if firstline:
+			# replace header with name
+			text = '>' + basename.partition('.')[0].replace(" ", "_") + "|\n"
+			firstline = False
+		elif line.startswith('>'):
+			text += 'NNNNNNNNNN' #indicate possible gaps between chr, plasmids, shotgun pieces, etc
+		elif line!= "\n": #skip empty lines within fasta
+			text += line
+
+	text = text + "\n" #add newline to end of file for eventual cat
+	fa = open(os.path.join(dirname,basename + '.cat.fa'), 'w')
+	fa.seek(0)
+	fa.write(text)
+	fa.truncate()
+	fa.close()
+	return basename + '.cat.fa'
 
 parser = argparse.ArgumentParser(description='Process mash results for kallisto index creation')
 parser.add_argument('filename', help='mash output file')
@@ -70,6 +95,7 @@ for sp in sp_map.keys():
 #pprint.pprint(truth)
 #pprint.pprint(zip(*final_st)[0])
 for f in zip(*final_st)[0]:
-	os.system("mv {} ../".format(f))
+	new_name = collapse_contigs(f)
+	os.system("mv {} ../".format(new_name))
 
 print "All hits: {}\t At least 5 hits: {}\t Species: {}\t Strains kept: {}".format(len(mash_1.keys()), len(mash_5.keys()), len(species), len(final_st))
