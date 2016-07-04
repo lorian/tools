@@ -51,7 +51,7 @@ def collapse_contigs(f):
 			text += line
 
 	text = text + "\n" #add newline to end of file for eventual cat
-	fa = open(os.path.join(dirname,basename + '.cat.fa'), 'w')
+	fa = open(basename + '.cat.fa', 'w')
 	fa.seek(0)
 	fa.write(text)
 	fa.truncate()
