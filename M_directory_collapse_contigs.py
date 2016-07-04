@@ -24,7 +24,7 @@ for f in file_list:
 	for line in mfa:
 		if firstline:
 			# replace header with name
-				text = '>' + basename.partition('.')[0].replace(" ", "_") + "|"
+			text = '>' + basename.partition('.')[0].replace(" ", "_") + "|"
 			firstline = False
 		elif line.startswith('>'):
 			text += 'NNNNNNNNNN' #indicate possible gaps between chr, plasmids, shotgun pieces, etc
