@@ -12,10 +12,10 @@ for arg in iterarg:
 	else:
 		dirname = dirname + " " + arg
 
-file_list = [f for f in os.listdir(dirname) if f.endswith('dna.genome.fa')]
+file_list = [f for f in os.listdir(dirname) if f.endswith('dna.genome.fa') or f.endswith('.mfa')]
 
 for f in file_list:
-	basename = f.partition('.dna.genome.fa')[0]
+	basename = f.partition('.dna.genome.fa')[0].partition('.mfa')[0]
 	mfa = open(os.path.join(dirname,f),'r')
 
 	text = ""
