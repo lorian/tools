@@ -35,7 +35,7 @@ def count_sp(fastas):
 
 def collapse_contigs(f):
 	basename = f.partition('.dna.genome.fa')[0].partition('.mfa')[0]
-	mfa = open(os.path.join(dirname,f),'r')
+	mfa = open(f,'r')
 
 	text = ""
 
