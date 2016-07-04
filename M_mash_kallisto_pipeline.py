@@ -43,7 +43,8 @@ def collapse_contigs(f):
 	for line in mfa:
 		if firstline:
 			# replace header with name
-			text = '>' + basename.partition('.')[0].replace(" ", "_") + "|\n"
+			new_name = basename.partition('.1.30')[0].partition('.GCA')[0].replace(" ", "_")
+			text = '>' + new_name + "|\n"
 			firstline = False
 		elif line.startswith('>'):
 			text += 'NNNNNNNNNN' #indicate possible gaps between chr, plasmids, shotgun pieces, etc
