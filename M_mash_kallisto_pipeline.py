@@ -96,9 +96,7 @@ for sp in sp_map.keys():
 	final_st.extend(sp_map[sp][:min(int(args.top_strains),len(sp_map[sp]))])
 	#final_st.extend(sp_map[sp][:min(10,len(sp_map[sp]))])
 
-#pprint.pprint(sp_map)
-#pprint.pprint(truth)
-#pprint.pprint(zip(*final_st)[0])
+pprint.pprint(zip(*final_st)[0])
 for f in zip(*final_st)[0]:
 	new_name = collapse_contigs(f)
 	if new_name:
