@@ -35,7 +35,11 @@ def count_sp(fastas):
 
 def collapse_contigs(f):
 	basename = f.partition('.dna.genome.fa')[0].partition('.mfa')[0]
-	mfa = open(f,'r')
+	try:
+		mfa = open(f,'r')
+	except IOError:
+		print "{} does not exist".format(f)
+		return False
 
 	text = ""
 
@@ -84,7 +88,7 @@ with open(args.filename,'r') as mash_file:
 species = count_sp(mash_5.keys())
 sp_map = {sp.lower(): [(st,mash_1[st]) for st in mash_5.keys() if sp.lower() in st.lower()] for sp in species}
 final_st = []
-print args.top_strains
+
 for sp in sp_map.keys():
 	# pick top N of each species
 	sp_map[sp].sort(key=lambda x:x[1],reverse=True)
@@ -97,6 +101,9 @@ for sp in sp_map.keys():
 #pprint.pprint(zip(*final_st)[0])
 for f in zip(*final_st)[0]:
 	new_name = collapse_contigs(f)
-	os.system("mv {} ../".format(new_name))
+	if new_name:
+		os.system("mv {} ../".format(new_name))
+		if not os.path.exists(os.path.join('../','{}').format(new_name)):
+			print new_name
 
 print "All hits: {}\t At least 5 hits: {}\t Species: {}\t Strains kept: {}".format(len(mash_1.keys()), len(mash_5.keys()), len(species), len(final_st))
