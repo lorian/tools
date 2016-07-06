@@ -99,7 +99,7 @@ final_names = list(set(zip(*final_st)[0]))
 final_names.sort()
 pprint.pprint(final_names)
 
-for f in zip(*final_names)[0]:
+for f in final_names:
 	new_name = collapse_contigs(f)
 	if new_name:
 		os.system("mv {} ../".format(new_name))
@@ -108,8 +108,7 @@ for f in zip(*final_names)[0]:
 
 #compare lists
 moved_files = [f for f in os.listdir('../') if f.endswith(".cat.fa")]
-print len(moved_files)
-for f in zip(*final_names)[0]:
+for f in final_names:
 	basename = f.partition('.dna.genome.fa')[0].partition('.mfa')[0]
 	if not basename+'.cat.fa' in moved_files:
 		print "Missing: {}".format(f)
