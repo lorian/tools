@@ -95,7 +95,7 @@ for sp in sp_map.keys():
 	#print sp_map[sp][:min(args.top_strains,len(sp_map[sp]))]
 	final_st.extend(sp_map[sp][:min(int(args.top_strains),len(sp_map[sp]))])
 
-final_names = set(zip(*final_st)[0])
+final_names = list(set(zip(*final_st)[0]))
 final_names.sort()
 pprint.pprint(final_names)
 
