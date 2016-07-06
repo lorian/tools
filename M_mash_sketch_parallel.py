@@ -5,4 +5,4 @@ import string
 
 for letter in string.ascii_uppercase+"_":
 	print letter
-	subprocess.call("time mash sketch -o ensembl_bact_{0} {0}*.dna.genome.fa -s 10000 -k 25 &".format(letter), shell=True)
+	subprocess.call("mash sketch -o ensembl_bact_{0} {0}*.dna.genome.fa -s 100000 -k 21 &".format(letter), shell=True)
