@@ -94,14 +94,23 @@ for sp in sp_map.keys():
 	sp_map[sp].sort(key=lambda x:x[1],reverse=True)
 	#print sp_map[sp][:min(args.top_strains,len(sp_map[sp]))]
 	final_st.extend(sp_map[sp][:min(int(args.top_strains),len(sp_map[sp]))])
-	#final_st.extend(sp_map[sp][:min(10,len(sp_map[sp]))])
 
-pprint.pprint(zip(*final_st)[0])
+final_st.sort(key=lambda x: x[0])
+#pprint.pprint(zip(*final_st)[0])
+'''
 for f in zip(*final_st)[0]:
 	new_name = collapse_contigs(f)
 	if new_name:
 		os.system("mv {} ../".format(new_name))
 		if not os.path.exists(os.path.join('../','{}').format(new_name)):
 			print new_name
+'''
+
+#compare lists
+moved_files = [f for f in os.listdir('../') if f.endswith(".cat.fa")]
+for f in zip(*final_st)[0]:
+	basename = f.partition('.dna.genome.fa')[0].partition('.mfa')[0]
+	if not basename+'.cat.fa' in moved_files:
+		print "Missing: {}".format(f)
 
 print "All hits: {}\t At least 5 hits: {}\t Species: {}\t Strains kept: {}".format(len(mash_1.keys()), len(mash_5.keys()), len(species), len(final_st))
