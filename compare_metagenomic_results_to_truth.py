@@ -29,6 +29,7 @@ class TaxaDict():
 		self.names = names
 		self.taxids = taxids
 
+
 	def get_taxa(self,name_or_id):
 		taxa = self.get_taxa_by_id(name_or_id)
 		if not taxa:
@@ -61,6 +62,12 @@ class TaxaDict():
 	def add_taxa(self,name,official_name,taxid,lineage):
 		tax_entry = Taxonomy(official_name,taxid,lineage)
 		self.names[str(name)] = taxid
+		self.taxids[taxid] = tax_entry
+		return tax_entry
+
+	def add_blank(self):
+		tax_entry = Taxonomy('Bacteria',2,{'superkingdom': '2', 'no rank': '131567'})
+		self.names[str('bacteria')] = 2
 		self.taxids[taxid] = tax_entry
 		return tax_entry
 
@@ -158,7 +165,13 @@ class Dataset():
 		return 0
 
 	def lookup_count(self, species):
-		return self.counts_by_sp[species]
+		count = self.counts_by_sp[species]
+		if count == 0:
+			try:
+				count = self.counts_by_sp[tax_dict.get_taxa_by_name(species).taxid]
+			except:
+				pass
+		return count
 
 	def lookup_size(self, species):
 		try:
@@ -171,21 +184,8 @@ class Dataset():
 		return [0]*len(self.species)
 
 	def clean_names(self):
-		# If BACT_ abbreviations are found, see if they match large genome database
-		'''
-		try:
-			min( i for i, sp in enumerate(self.species) if 'BACT_' in sp )
-		except:
-			clean_names = self.species
-		else:
-			with open('fullgenomenames.txt', 'r') as biggenomefile:
-				big_genome = dict(csv.reader(biggenomefile))
-			clean_names = [big_genome[s.partition('|')[0]]+"_"+s.partition('|')[2]
-							if s.partition('|')[0] in big_genome.keys()
-							else s for s in self.species]
-		'''
-		# Force clean_names to be lowercase and replace spaces with underscores
-		self.species = [s.lower().strip().replace(" ","_") for s in self.species]
+		# Force clean_names to be lowercase and replace problematic symbols
+		self.species = [s.lower().translate(string.maketrans("()[]:-","      ")).strip().replace(" ","_").replace(".","") for s in self.species]
 
 	def sort_by_name(self):
 		# Alphabetical by species
@@ -272,17 +272,29 @@ def collapse_duplicates(raw_data):
 	set_sz = {}
 	set_plasmids = {}
 	for sp,ab,co in dup_data:
-		name = sp.partition('_gi|')[0].partition('|')[0] #the prepended strain name
+		name = sp.partition('_gi|')[0].partition('|')[0].partition('_gca')[0] #the prepended strain name
 		set_plasmids.setdefault(name,0) # so there's always a plasmid count value for any given name key
-		if 'plasmid' in sp and not (name == 'ralstonia_eutropha_h16' or name == 'cupriavidus_necator_h16'):
-			set_plasmids[name] += co
-		else:
-			set_sp.setdefault(name,[]).append(sp)
-			set_ab.setdefault(name,[]).append(ab)
-			set_co.setdefault(name,[]).append(co)
-			set_sz.setdefault(name,[]).append(co)
+		#if 'plasmid' in sp and not (name == 'ralstonia_eutropha_h16' or name == 'cupriavidus_necator_h16'):
+		#	set_plasmids[name] += co
+		#else:
+		set_sp.setdefault(name,[]).append(sp)
+		set_ab.setdefault(name,[]).append(ab)
+		set_co.setdefault(name,[]).append(co)
+		set_sz.setdefault(name,[]).append(co)
 
+		'''
+		if 'rb50' in name: #and not 'plasmid' in sp:
+			print "\t{}".format(name)
+			print set_sp[name]
+			print set_co[name]
+			print "{} {} {}".format(sp,ab,co)
+		'''
 	assert(set_ab.keys() == set_co.keys() == set_sp.keys())
+
+	for name in set_co.keys():
+		if 'lawsonia' in name.lower():
+			print name
+			print set_co[name]
 
 	# New, clean dataset for data without duplicates
 	undupe = Dataset()
@@ -295,6 +307,8 @@ def collapse_duplicates(raw_data):
 			undupe.add_record(k,math.fsum(set_ab[k])/len(v),math.fsum(set_co[k])+set_plasmids[k],math.fsum(set_sz[k]))
 
 	print "Number of entries after combining duplicates: {0}".format(len(undupe.species))
+
+	print undupe.lookup_count('rhodococcus_jostii_rha1')
 
 	return undupe
 
@@ -359,9 +373,13 @@ def lookup_tax(original_name):
 						('bacillus',1386),
 						('thermosipho',2420),
 						('yersinia',629),
+						('erwinia tasmaniensis et199','Erwinia tasmaniensis ET1/99'),
+						('lawsonia intracellularis phemn1 00','Lawsonia intracellularis PHE/MN1-00'),
 						])
 
 	name = original_name.replace('_',' ').strip()
+	if 'lawsonia' in original_name.lower().replace('_',' ').strip():
+		print original_name.lower().replace('_',' ').strip()
 	if original_name.lower().replace('_',' ').strip() in known_names.keys(): # problematic names
 		name = known_names[original_name.partition('|')[0].lower().replace('_',' ').strip()]
 
@@ -412,11 +430,11 @@ def lookup_tax(original_name):
 							print "\t Unable to find {}".format(original_name)
 							print url_name
 							return ""
-
+		'''
 		if str(taxid) == '178505':
 			print original_name
 			print url_name
-
+		'''
 
 		# Get taxonomy for id
 		handle = Entrez.efetch(db="taxonomy", id=taxid, mode="text", rettype="xml")
@@ -463,19 +481,19 @@ def lookup_tax(original_name):
 def lookup_tax_list(species_list):
 	species_tax = []
 	for name in species_list:
-		if len(name) == 8 and name[0:2].isalpha() and name[3:7].isdigit():
-			pass
-		else: # skip unlookupable entries like CJG34856
+		add_to_list = lookup_tax('Bacteria').taxid # default
+		if not(len(name) == 8 and name[0:2].isalpha() and name[3:7].isdigit()):
+			# skip unlookupable entries like CJG34856
 			tax_entry = lookup_tax(name)
 			if tax_entry:
-				species_tax.append(tax_entry.taxid)
+				add_to_list = tax_entry.taxid
 			else:
 				tax_entry = lookup_tax(name.rpartition('_')[0])
 				try:
-					species_tax.append(tax_entry.taxid)
+					add_to_list = tax_entry.taxid
 				except:
 					print "Unable to find {} -- complete failure".format(name)
-
+		species_tax.append(add_to_list)
 	return species_tax
 
 def fix_transcript_names(species):
@@ -486,7 +504,7 @@ def fix_transcript_names(species):
 	return transcript_names
 
 
-def process_input(filename,program,truth,fragmented=False):
+def process_input(filename,program,fragmented=False):
 	""" Pull species names, abundance, and counts out of input file """
 
 	suffix = filename.rpartition('.')[2]
@@ -502,7 +520,6 @@ def process_input(filename,program,truth,fragmented=False):
 		input_file = open(filename,'r')
 
 	raw_est = Dataset()
-	raw_est.size = truth.size
 	if program == 'express':
 		input_csv = csv.reader(input_file, 'excel-tab')
 		input_data = [r for r in input_csv]
@@ -557,10 +574,13 @@ def process_input(filename,program,truth,fragmented=False):
 	print "Number of raw entries: {0}".format(len(raw_est.species))
 
 	raw_est.clean_names()
+	raw_est.remake_index()
+	print raw_est.lookup_count('erwinia_tasmaniensis_et1_99')
 	if not transcripts:
 		raw_est.remove_matches('rna') # remove specific genes
 		raw_est.remove_matches('gene_')
 		est = collapse_duplicates(raw_est)
+
 	else:
 		raw_est.remove_matches('plasmid')
 		raw_est.species = fix_transcript_names(raw_est.species)
@@ -570,12 +590,15 @@ def process_input(filename,program,truth,fragmented=False):
 	est.sort_by_name()
 	est.set_threshold()
 
-	cPickle.dump(est,open(filename +'.p','wb'))
+	#cPickle.dump(est,open(filename +'.p','wb'))
 
 	if not transcripts:
 		est.species = lookup_tax_list(est.species) # from this point on, species are taxids
-
 	est.remake_index()
+
+	print est.lookup_count('erwinia_tasmaniensis_et1/99')
+#	print tax_dict.get_taxa_by_name('erwinia_tasmaniensis_et1/99')
+
 	return est
 
 def dataset_truth(dataset='i100'):
@@ -598,7 +621,6 @@ def dataset_truth(dataset='i100'):
 	if not transcripts:
 		truth.clean_names()
 		truth.sort_by_name()
-		print truth.lookup_count("cytophaga_hutchinsonii_atcc_33406")
 		truth.species = lookup_tax_list(truth.species) # from this point on, species are taxids
 	else: # process transcript names for consistancy
 		cleanup = string.maketrans('-()+/ ','______')
@@ -627,6 +649,7 @@ def calc_counts_error(truth,est):
 
 	# estimated counts for true species
 	adjusted_counts = [est.lookup_count(sp) for sp in truth.species]
+	print est.lookup_count('187272')
 	#for ind,sp in enumerate(est.species):
 	#	adjusted_true_counts[ind] = truth.lookup_count(sp) # true counts for estimated species
 
@@ -718,7 +741,7 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 
 	filtered_est = Dataset()
 	filtered_est.set_by_array([(sp,errors[sp],est.lookup_count(sp)) for sp in filtered_names])
-	# abundance field contains stdev errors
+	# abundance field contains stdev errors if they exist
 
 	if transcripts:
 		filtered_true = Dataset()
@@ -822,9 +845,12 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		all_sort = zip(present_species,present_true,present_est,present_errors)
 		all_sort.sort( key=lambda x: x[2],reverse=True )
 		all_sort.sort( key=lambda x: x[1],reverse=True )
-		all_sort.sort(key=lambda x: x[0]) #sort by name
+		all_sort.sort(key=lambda x: x[0]) #sort by name for troubleshooting
+
 		for r in all_sort:
-			print r
+			if r[2] == 0: # no estimated counts
+				print r
+
 		present_species,present_true,present_est,present_errors = zip(*all_sort)
 
 		plotfunctions.plot_setup_pre(
@@ -875,6 +901,8 @@ def graph_est(est, expname, tier, show_graphs, save_graphs, errors):
 	all_filter.sort( key=lambda x: x[1],reverse=True )
 	fil_sp,fil_est = zip(*all_filter)
 	#fil_est = numpy.log(fil_est)
+
+	pprint.pprint(all_filter)
 
 	plotfunctions.plot_setup_pre(
 		"Human gut metatranscriptome {}-level estimated counts"
@@ -932,7 +960,9 @@ def main(argv=sys.argv):
 		pickle_len = len(tax_dict.names.keys())
 
 	truth = dataset_truth(dataset)
-	estimated = process_input(filename,program,truth)
+	estimated = process_input(filename,program)
+	print truth.lookup_count('erwinia_tasmaniensis_et1_99')
+
 	if not transcripts:
 		est_j_species = collapse_strains(estimated,'species')
 		est_j_genus = collapse_strains(estimated,'genus')
@@ -974,7 +1004,7 @@ def main(argv=sys.argv):
 
 	for label,true,est in dataset_pairs:
 		if dataset == 'no_truth':
-			graph_est(est, exp_name, label, show_graphs, save_graphs)
+			graph_est(est, exp_name, label, show_graphs, save_graphs, bootstrap_counts)
 		else:
 			print "\n{}-LEVEL ERROR:".format(label.upper())
 			diff, adjusted_abundance, norm_factor = calc_counts_error(true,est)
