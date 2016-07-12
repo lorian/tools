@@ -25,7 +25,7 @@ with open(args.readsname,'r') as read_file:
 
 pprint.pprint(split_data.keys())
 for k in split_data.keys():
-	new_reads = open(args.readsname.partition(".")[0] + "_{}.fastq".format(k),"w")
+	new_reads = open(args.readsname.rpartition(".")[0] + "_{}.fastq".format(k),"w")
 	new_reads.write("".join(split_data[k],))
 	new_reads.close()
 
