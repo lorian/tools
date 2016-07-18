@@ -67,7 +67,7 @@ parser = argparse.ArgumentParser(description='Process mash results for kallisto 
 parser.add_argument('filename', help='mash output file')
 parser.add_argument('top_strains', help="How many strains of each species to keep for the quantification step")
 parser.add_argument('directory', default="../", help="Directory to put files for kallisto index creation")
-parser.add_argument('dry-run', default=False, help="If True, outputs files that would be moved, but does not move any files.")
+parser.add_argument('dry_run', default=False, help="If True, outputs files that would be moved, but does not move any files.")
 args = parser.parse_args()
 
 with open(args.filename,'r') as mash_file:
@@ -100,7 +100,8 @@ for sp in sp_map.keys():
 final_names = list(set(zip(*final_st)[0]))
 final_names.sort()
 with open('mash_names.txt','w') as f:
-	f.writelines(final_names)
+	f.write('\n'.join(final_names) + '\n')
+print "Files to move output in mash_names.txt."
 
 if not args.dry_run: #don't create or move files
 
