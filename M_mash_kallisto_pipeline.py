@@ -66,6 +66,8 @@ def collapse_contigs(f):
 parser = argparse.ArgumentParser(description='Process mash results for kallisto index creation')
 parser.add_argument('filename', help='mash output file')
 parser.add_argument('top_strains', help="How many strains of each species to keep for the quantification step")
+parser.add_argument('directory', default="../", help="Directory to put files for kallisto index creation")
+parser.add_argument('dry-run', default=False, help="If True, outputs files that would be moved, but does not move any files.")
 args = parser.parse_args()
 
 with open(args.filename,'r') as mash_file:
@@ -97,20 +99,26 @@ for sp in sp_map.keys():
 
 final_names = list(set(zip(*final_st)[0]))
 final_names.sort()
-pprint.pprint(final_names)
+with open('mash_names.txt','w') as f:
+	f.writelines(final_names)
 
-for f in final_names:
-	new_name = collapse_contigs(f)
-	if new_name:
-		os.system("mv {} ../".format(new_name))
-		if not os.path.exists(os.path.join('../','{}').format(new_name)):
-			print new_name
+if not args.dry_run: #don't create or move files
 
-#compare lists
-moved_files = [f for f in os.listdir('../') if f.endswith(".cat.fa")]
-for f in final_names:
-	basename = f.partition('.dna.genome.fa')[0].partition('.mfa')[0]
-	if not basename+'.cat.fa' in moved_files:
-		print "Missing: {}".format(f)
+	for f in final_names:
+		new_name = collapse_contigs(f)
+		if new_name:
+			os.system("mv {0} {1}".format(new_name,args.directory))
+			if not os.path.exists(os.path.join('{0}','{1}').format(args.directory,new_name)):
+				print new_name
 
-print "All hits: {}\t At least 5 hits: {}\t Species: {}\t Strains kept: {}\t Strains moved: {}\t".format(len(mash_1.keys()), len(mash_5.keys()), len(species), len(final_names), len(moved_files))
+	#compare lists
+	moved_files = [f for f in os.listdir(args.directory) if f.endswith(".cat.fa")]
+	for f in final_names:
+		basename = f.partition('.dna.genome.fa')[0].partition('.mfa')[0]
+		if not basename+'.cat.fa' in moved_files:
+			print "Missing: {}".format(f)
+
+	print "All hits: {}\t At least 5 hits: {}\t Species: {}\t Strains kept: {}\t Strains moved: {}\t".format(len(mash_1.keys()), len(mash_5.keys()), len(species), len(final_names), len(moved_files))
+
+else:
+	print "All hits: {}\t At least 5 hits: {}\t Species: {}\t Strains kept: {}\t".format(len(mash_1.keys()), len(mash_5.keys()), len(species), len(final_names))
