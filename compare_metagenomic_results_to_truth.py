@@ -281,9 +281,8 @@ def collapse_duplicates(raw_data):
 		set_ab.setdefault(name,[]).append(ab)
 		set_co.setdefault(name,[]).append(co)
 		set_sz.setdefault(name,[]).append(co)
-
 		'''
-		if 'rb50' in name: #and not 'plasmid' in sp:
+		if 'erwinia' in name.lower(): #and not 'plasmid' in sp:
 			print "\t{}".format(name)
 			print set_sp[name]
 			print set_co[name]
@@ -291,11 +290,13 @@ def collapse_duplicates(raw_data):
 		'''
 	assert(set_ab.keys() == set_co.keys() == set_sp.keys())
 
+	'''
 	for name in set_co.keys():
 		if 'lawsonia' in name.lower():
 			print name
 			print set_co[name]
-
+	'''
+	
 	# New, clean dataset for data without duplicates
 	undupe = Dataset()
 
@@ -307,8 +308,6 @@ def collapse_duplicates(raw_data):
 			undupe.add_record(k,math.fsum(set_ab[k])/len(v),math.fsum(set_co[k])+set_plasmids[k],math.fsum(set_sz[k]))
 
 	print "Number of entries after combining duplicates: {0}".format(len(undupe.species))
-
-	print undupe.lookup_count('rhodococcus_jostii_rha1')
 
 	return undupe
 
@@ -374,14 +373,21 @@ def lookup_tax(original_name):
 						('thermosipho',2420),
 						('yersinia',629),
 						('erwinia tasmaniensis et199','Erwinia tasmaniensis ET1/99'),
+						('erwinia tasmaniensis et1 99','Erwinia tasmaniensis ET1/99'),
+						('erwinia tasmaniensis et1/99','Erwinia tasmaniensis ET1/99'),
+						("erwinia tasmaniensis strain et1/99", 'Erwinia tasmaniensis ET1/99'),
 						('lawsonia intracellularis phemn1 00','Lawsonia intracellularis PHE/MN1-00'),
 						])
 
-	name = original_name.replace('_',' ').strip()
-	if 'lawsonia' in original_name.lower().replace('_',' ').strip():
-		print original_name.lower().replace('_',' ').strip()
-	if original_name.lower().replace('_',' ').strip() in known_names.keys(): # problematic names
-		name = known_names[original_name.partition('|')[0].lower().replace('_',' ').strip()]
+	name = original_name.partition('|')[0].lower().replace('_',' ').strip()
+	
+	'''
+	if 'tasmaniensis' in name:
+		print name
+		print known_names[name]
+	'''
+	if name in known_names.keys(): # problematic names
+		name = known_names[name]
 
 	tax_entry = tax_dict.get_taxa_by_name(original_name) # skip the lookup if taxa was already found
 	if tax_entry:
@@ -575,7 +581,6 @@ def process_input(filename,program,fragmented=False):
 
 	raw_est.clean_names()
 	raw_est.remake_index()
-	print raw_est.lookup_count('erwinia_tasmaniensis_et1_99')
 	if not transcripts:
 		raw_est.remove_matches('rna') # remove specific genes
 		raw_est.remove_matches('gene_')
@@ -594,10 +599,9 @@ def process_input(filename,program,fragmented=False):
 
 	if not transcripts:
 		est.species = lookup_tax_list(est.species) # from this point on, species are taxids
+		est.remake_index()
+		est = collapse_duplicates(est)
 	est.remake_index()
-
-	print est.lookup_count('erwinia_tasmaniensis_et1/99')
-#	print tax_dict.get_taxa_by_name('erwinia_tasmaniensis_et1/99')
 
 	return est
 
@@ -612,6 +616,8 @@ def dataset_truth(dataset='i100'):
 		i100_csv = [r for r in csv.reader(open('simmt_truth_fixed.csv','r'), 'excel')]
 	elif dataset == 'simmt_transcripts':
 		i100_csv = [r for r in csv.reader(open('simmt_truth_transcripts_old.csv','r'), 'excel')]
+	elif dataset == 'clean_mash':
+		i100_csv = [r for r in csv.reader(open('i100_truth_mash.csv','r'), 'excel')]
 	else: # actual i100
 		i100_csv = [r for r in csv.reader(open('i100_truth.csv','r'), 'excel')]
 
@@ -649,7 +655,6 @@ def calc_counts_error(truth,est):
 
 	# estimated counts for true species
 	adjusted_counts = [est.lookup_count(sp) for sp in truth.species]
-	print est.lookup_count('187272')
 	#for ind,sp in enumerate(est.species):
 	#	adjusted_true_counts[ind] = truth.lookup_count(sp) # true counts for estimated species
 
@@ -667,7 +672,6 @@ def calc_counts_error(truth,est):
 	print "Relative root mean squared error of normalized assigned counts: {:.2f}%".format(numpy.mean(diff_sq_n) ** (0.5) * 100)
 	#rel_diff = (abs(numpy.array(est.counts) - adjusted_true_counts)/((numpy.array(est.counts) + adjusted_true_counts)/2))
 	#print "Relative difference of normalized assigned counts: {:.2f}%".format(numpy.mean(rel_diff) * 100)
-
 
 	return diff_n,normalized_counts,normalization_factor
 
@@ -805,7 +809,7 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 	# graph abundances for all species, not just the true ones, if above mean
 	else:
 		if len(est.species) - filtered_est.counts.count(0) > len(truth.species)*1.25:
-				mean_ab = min(truth.counts)*2#/10 #10% of lowest actual count in truth
+				mean_ab = min(truth.counts)/10 #10% of lowest actual count in truth
 				print "Filtering out any estimated results under {} counts".format(mean_ab)
 		else:
 			mean_ab = 1
@@ -848,8 +852,8 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		all_sort.sort(key=lambda x: x[0]) #sort by name for troubleshooting
 
 		for r in all_sort:
-			if r[2] == 0: # no estimated counts
-				print r
+			#if r[2] == 0: # no estimated counts
+			print r
 
 		present_species,present_true,present_est,present_errors = zip(*all_sort)
 
@@ -902,6 +906,7 @@ def graph_est(est, expname, tier, show_graphs, save_graphs, errors):
 	fil_sp,fil_est = zip(*all_filter)
 	#fil_est = numpy.log(fil_est)
 
+	print "Results that passed filter:"
 	pprint.pprint(all_filter)
 
 	plotfunctions.plot_setup_pre(
