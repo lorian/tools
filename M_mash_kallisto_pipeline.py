@@ -11,6 +11,7 @@ import argparse
 import pprint
 import collections
 import os
+import re
 
 def count_sp(fastas):
 	# pick out unique species, more or less
@@ -37,6 +38,7 @@ def collapse_contigs(f):
 	basename = f.partition('.dna.genome.fa')[0].partition('.mfa')[0]
 	try:
 		mfa = open(f,'r')
+		print mfa
 	except IOError:
 		print "{} does not exist".format(f)
 		return False
@@ -48,7 +50,10 @@ def collapse_contigs(f):
 		if firstline:
 			# replace header with name
 			new_name = basename.partition('.1.30')[0].partition('.GCA')[0].replace(" ", "_")
-			text = '>' + new_name + "|\n"
+			# try to filter out only the useful parts of the original header: GCA, NC, or gi uids
+			name_parts = filter(None, re.split("[|:]+", line.replace('gi|','gi_').replace('_gi', '|gi')))
+			keep_ids = [w for w in name_parts if (w.startswith('GCA_') or w.startswith('NC_') or w.startswith('gi_'))]
+			text = '>'+ new_name +"|"+ "|".join(keep_ids) +"\n"
 			firstline = False
 		elif line.startswith('>'):
 			text += 'NNNNNNNNNN' #indicate possible gaps between chr, plasmids, shotgun pieces, etc
@@ -57,6 +62,7 @@ def collapse_contigs(f):
 
 	text = text + "\n" #add newline to end of file for eventual cat
 	fa = open(basename + '.cat.fa', 'w')
+	print basename
 	fa.seek(0)
 	fa.write(text)
 	fa.truncate()
@@ -101,12 +107,15 @@ final_names = list(set(zip(*final_st)[0]))
 final_names.sort()
 with open('mash_names.txt','w') as f:
 	f.write('\n'.join(final_names) + '\n')
-print "Files to move output in mash_names.txt."
+print "Files to be moved listed in mash_names.txt."
 
 if not args.dry_run: #don't create or move files
 
+	# should make directory if it doesn't already exist
+	
 	for f in final_names:
 		new_name = collapse_contigs(f)
+		
 		if new_name:
 			os.system("mv {0} {1}".format(new_name,args.directory))
 			if not os.path.exists(os.path.join('{0}','{1}').format(args.directory,new_name)):
@@ -118,8 +127,8 @@ if not args.dry_run: #don't create or move files
 		basename = f.partition('.dna.genome.fa')[0].partition('.mfa')[0]
 		if not basename+'.cat.fa' in moved_files:
 			print "Missing: {}".format(f)
-
+		
 	print "All hits: {}\t At least 5 hits: {}\t Species: {}\t Strains kept: {}\t Strains moved: {}\t".format(len(mash_1.keys()), len(mash_5.keys()), len(species), len(final_names), len(moved_files))
-
+		
 else:
 	print "All hits: {}\t At least 5 hits: {}\t Species: {}\t Strains kept: {}\t".format(len(mash_1.keys()), len(mash_5.keys()), len(species), len(final_names))
