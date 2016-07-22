@@ -38,7 +38,6 @@ def collapse_contigs(f):
 	basename = f.partition('.dna.genome.fa')[0].partition('.mfa')[0]
 	try:
 		mfa = open(f,'r')
-		print mfa
 	except IOError:
 		print "{} does not exist".format(f)
 		return False
@@ -62,7 +61,6 @@ def collapse_contigs(f):
 
 	text = text + "\n" #add newline to end of file for eventual cat
 	fa = open(basename + '.cat.fa', 'w')
-	print basename
 	fa.seek(0)
 	fa.write(text)
 	fa.truncate()
