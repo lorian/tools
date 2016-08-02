@@ -67,10 +67,11 @@ def collapse_contigs(f):
 				if taxid:
 					break
 			if not taxid:
-				print "unable to lookup taxid for {}".format(mfa)
+				print "Unable to lookup taxid for {}".format(f)
+				print line
+				print keep_ids
 			
 			text = ">{0}| kraken:taxid|{1}|{2}\n".format(new_name,taxid,"|".join(keep_ids))
-			print text
 			firstline = False
 		elif line.startswith('>'):
 			text += 'NNNNNNNNNN' #indicate possible gaps between chr, plasmids, shotgun pieces, etc
