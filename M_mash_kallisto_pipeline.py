@@ -12,6 +12,7 @@ import pprint
 import collections
 import os
 import re
+import urllib2
 
 def count_sp(fastas):
 	# pick out unique species, more or less
@@ -34,6 +35,15 @@ def count_sp(fastas):
 		unique_species.update([sp_name])
 	return unique_species
 
+def get_taxid(uid):
+	# look up taxid
+	page_taxa = urllib2.urlopen('http://www.ebi.ac.uk/ena/data/view/{}&display=xml'.format(uid))
+	for line in page_taxa:
+		if line.strip().startswith('<TAXON_ID>'):
+			taxid = line.partition('>')[2].partition('<')[0]
+			return taxid
+	return ''
+
 def collapse_contigs(f):
 	basename = f.partition('.dna.genome.fa')[0].partition('.mfa')[0]
 	try:
@@ -52,7 +62,15 @@ def collapse_contigs(f):
 			# try to filter out only the useful parts of the original header: GCA, NC, or gi uids
 			name_parts = filter(None, re.split("[|:]+", line.replace('gi|','gi_').replace('_gi', '|gi')))
 			keep_ids = [w for w in name_parts if (w.startswith('GCA_') or w.startswith('NC_') or w.startswith('gi_'))]
-			text = '>'+ new_name +"|"+ "|".join(keep_ids) +"\n"
+			for id in keep_ids:
+				taxid = get_taxid(id)
+				if taxid:
+					break
+			if not taxid:
+				print "unable to lookup taxid for {}".format(mfa)
+			
+			text = ">{0}| kraken:taxid|{1}|{2}\n".format(new_name,taxid,"|".join(keep_ids))
+			print text
 			firstline = False
 		elif line.startswith('>'):
 			text += 'NNNNNNNNNN' #indicate possible gaps between chr, plasmids, shotgun pieces, etc
