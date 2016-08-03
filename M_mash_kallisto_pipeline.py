@@ -13,6 +13,8 @@ import collections
 import os
 import re
 import urllib2
+from Bio import Entrez
+Entrez.email = 'lanthala@berkeley.edu'
 
 def count_sp(fastas):
 	# pick out unique species, more or less
@@ -37,11 +39,17 @@ def count_sp(fastas):
 
 def get_taxid(uid):
 	# look up taxid
-	page_taxa = urllib2.urlopen('http://www.ebi.ac.uk/ena/data/view/{}&display=xml'.format(uid))
-	for line in page_taxa:
-		if line.strip().startswith('<TAXON_ID>'):
-			taxid = line.partition('>')[2].partition('<')[0]
-			return taxid
+	if uid.startswith('GCA_'):
+		page_taxa = urllib2.urlopen('http://www.ebi.ac.uk/ena/data/view/{}&display=xml'.format(uid))
+		for line in page_taxa:
+			if line.strip().startswith('<TAXON_ID>'):
+				return line.partition('>')[2].partition('<')[0]
+
+	if uid.startswith('NC_'):
+		handle = Entrez.efetch("nucleotide", id=uid, retmode="xml")
+		records = Entrez.read(handle)
+		return records[0]['GBSeq_feature-table'][0]['GBFeature_quals'][-1]['GBQualifier_value'].partition(':')[2]
+
 	return ''
 
 def collapse_contigs(f):
