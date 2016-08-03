@@ -45,14 +45,18 @@ def get_taxid(uid):
 			if line.strip().startswith('<TAXON_ID>'):
 				return line.partition('>')[2].partition('<')[0]
 
-	if uid.startswith('NC_'):
+	if uid.startswith('NC_') or uid.startswith('gi_'):
+		if uid.startswith('gi_'):
+			uid = uid.partition('gi_')[2] #NCBI wants them as just straight numbers
 		handle = Entrez.efetch("nucleotide", id=uid, retmode="xml")
-		try:
-			records = Entrez.read(handle, validate=False)
-			return records[0]['GBSeq_feature-table'][0]['GBFeature_quals'][-1]['GBQualifier_value'].partition(':')[2]
-		except:
-			print uid
-			print handle
+		records = Entrez.read(handle, validate=False)
+		# standard location
+		taxid = records[0]['GBSeq_feature-table'][0]['GBFeature_quals'][-1]['GBQualifier_value'].partition(':')[2]
+		if not taxid:
+			# sometimes it's not the last quals list, so we have to search for it
+			taxid = [r['GBQualifier_value'] for r in records[0]['GBSeq_feature-table'][0]['GBFeature_quals'] if ('taxon' in r['GBQualifier_value'])][0].partition(':')[2]
+		return taxid
+
 	return ''
 
 def collapse_contigs(f):
