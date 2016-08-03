@@ -47,9 +47,12 @@ def get_taxid(uid):
 
 	if uid.startswith('NC_'):
 		handle = Entrez.efetch("nucleotide", id=uid, retmode="xml")
-		records = Entrez.read(handle)
-		return records[0]['GBSeq_feature-table'][0]['GBFeature_quals'][-1]['GBQualifier_value'].partition(':')[2]
-
+		try:
+			records = Entrez.read(handle, validate=False)
+			return records[0]['GBSeq_feature-table'][0]['GBFeature_quals'][-1]['GBQualifier_value'].partition(':')[2]
+		except:
+			print uid
+			print handle
 	return ''
 
 def collapse_contigs(f):
