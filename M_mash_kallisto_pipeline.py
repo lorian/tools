@@ -86,7 +86,7 @@ def collapse_contigs(f):
 				print line
 				print keep_ids
 			
-			text = ">{0}| kraken:taxid|{1}|{2}\n".format(new_name,taxid,"|".join(keep_ids))
+			text = ">{0}|kraken:taxid|{1}|{2}\n".format(new_name,taxid,"|".join(keep_ids))
 			firstline = False
 		elif line.startswith('>'):
 			text += 'NNNNNNNNNN' #indicate possible gaps between chr, plasmids, shotgun pieces, etc
