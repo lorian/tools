@@ -49,7 +49,7 @@ def get_taxid(uid):
 		if uid.startswith('gi_'):
 			uid = uid.partition('gi_')[2] #NCBI wants them as just straight numbers
 		handle = Entrez.efetch("nucleotide", id=uid, retmode="xml")
-		records = Entrez.read(handle, validate=False)
+		records = Entrez.read(handle)
 		# standard location
 		taxid = records[0]['GBSeq_feature-table'][0]['GBFeature_quals'][-1]['GBQualifier_value'].partition(':')[2]
 		if not taxid:
