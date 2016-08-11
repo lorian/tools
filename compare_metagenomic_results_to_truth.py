@@ -272,7 +272,10 @@ def collapse_duplicates(raw_data):
 	set_sz = {}
 	set_plasmids = {}
 	for sp,ab,co in dup_data:
-		name = sp.partition('_gi|')[0].partition('|')[0].partition('_gca')[0] #the prepended strain name
+		if 'taxid' in sp: # retain useful information
+			name = sp.rpartition('|')[0]
+		else:
+			name = sp.partition('_gi|')[0].partition('|')[0].partition('_gca')[0] #the prepended strain name
 		set_plasmids.setdefault(name,0) # so there's always a plasmid count value for any given name key
 		#if 'plasmid' in sp and not (name == 'ralstonia_eutropha_h16' or name == 'cupriavidus_necator_h16'):
 		#	set_plasmids[name] += co
@@ -282,7 +285,7 @@ def collapse_duplicates(raw_data):
 		set_co.setdefault(name,[]).append(co)
 		set_sz.setdefault(name,[]).append(co)
 		'''
-		if 'erwinia' in name.lower(): #and not 'plasmid' in sp:
+		if 'ignicoccus' in name.lower(): #and not 'plasmid' in sp:
 			print "\t{}".format(name)
 			print set_sp[name]
 			print set_co[name]
@@ -292,7 +295,7 @@ def collapse_duplicates(raw_data):
 
 	'''
 	for name in set_co.keys():
-		if 'lawsonia' in name.lower():
+		if 'ignicoccus' in name.lower():
 			print name
 			print set_co[name]
 	'''
@@ -311,9 +314,8 @@ def collapse_duplicates(raw_data):
 
 	return undupe
 
-def lookup_tax(original_name):
-	global tax_dict
-
+def get_taxid(original_name):
+	
 	known_names = dict([('bacterium ellin514 strain ellin514','Pedosphaera parvula Ellin514'),
 						('bacteroidetes sp. f0058','Bacteroidetes oral taxon 274 str. F0058'),
 						('baumannia cicadellinicola str. hc','Baumannia cicadellinicola str. Hc (Homalodisca coagulata)'),
@@ -375,73 +377,83 @@ def lookup_tax(original_name):
 						('erwinia tasmaniensis et199','Erwinia tasmaniensis ET1/99'),
 						('erwinia tasmaniensis et1 99','Erwinia tasmaniensis ET1/99'),
 						('erwinia tasmaniensis et1/99','Erwinia tasmaniensis ET1/99'),
-						("erwinia tasmaniensis strain et1/99", 'Erwinia tasmaniensis ET1/99'),
+						("erwinia tasmaniensis strain et1/99",'Erwinia tasmaniensis ET1/99'),
+						("erwinia tasmaniensis strain et199",'Erwinia tasmaniensis ET1/99'),
 						('lawsonia intracellularis phemn1 00','Lawsonia intracellularis PHE/MN1-00'),
+						('ignicoccus hospitalis kin4 i','Ignicoccus hospitalis KIN4/I'),
 						])
-
-	name = original_name.partition('|')[0].lower().replace('_',' ').strip()
-	
-	'''
-	if 'tasmaniensis' in name:
-		print name
-		print known_names[name]
-	'''
-	if name in known_names.keys(): # problematic names
-		name = known_names[name]
 
 	tax_entry = tax_dict.get_taxa_by_name(original_name) # skip the lookup if taxa was already found
 	if tax_entry:
 		return tax_entry
+
+	if 'taxid' in original_name:
+		taxid = original_name.partition('taxid|')[2].partition('|')[0]
+		return taxid
+		
+	name = original_name.partition('|')[0].lower().replace('_',' ').strip()
+
+	if name in known_names.keys(): # problematic names
+		name = known_names[name]
+
 	tax_entry = tax_dict.get_taxa_by_id(name) # skip the lookup if taxa was already found
 	if tax_entry:
 		return tax_entry
 
 	try:
 		if type(name) == int or name.isdigit(): #if we've already passed a taxid instead of a text name
-			taxid = name
-		else:
-			# Clean name for URL use; replace marks that cause problems for NCBI lookup with spaces
-			url_name = urllib.quote_plus(name.translate(string.maketrans("()[]:","     ").replace('_',' ').strip()))
+			return name
 
-			# Look up taxonomy ID
+		# Clean name for URL use; replace marks that cause problems for NCBI lookup with spaces
+		url_name = urllib.quote_plus(name.translate(string.maketrans("()[]:","     ").replace('_',' ').strip()))
+
+		# Look up taxonomy ID
+		handle = Entrez.esearch(db="taxonomy", term=url_name)
+		records = Entrez.read(handle)
+		taxid = records['IdList']
+		if taxid:
+			return taxid
+			
+		# lookup manually instead of through biopython
+		page_taxa = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=taxonomy&term={}'.format(url_name))
+		for line in page_taxa:
+			line = string.replace(line,"\t","")
+			if line.startswith("<Id>"):
+				taxid = line[4:-6]
+				return taxid
+
+		# look up through uniprot
+		page_taxa = urllib2.urlopen('http://www.uniprot.org/taxonomy/?query={}'.format(url_name))
+		for line in page_taxa:
+			if line.startswith("</script>"):
+				taxid = line.partition("tr id=\"")[2].partition("\"")[0]
+				return taxid
+
+		if 'gca' in original_name.lower() or '_str_' in original_name.lower():
+			name = original_name.lower().partition('_gca')[0].partition('_str_')[0]
+			url_name = urllib.quote_plus(name.translate(string.maketrans("()[]:","     ").replace('_',' ').strip()))
 			handle = Entrez.esearch(db="taxonomy", term=url_name)
 			records = Entrez.read(handle)
 			taxid = records['IdList']
-			if not taxid: # lookup manually instead of through biopython
+			return taxid
 
-				page_taxa = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=taxonomy&term={}'.format(url_name))
-				for line in page_taxa:
-					line = string.replace(line,"\t","")
-					if line.startswith("<Id>"):
-						taxid = line[4:-6]
-						break;
+		print "\t Unable to find {}".format(original_name)
+		print url_name
+		return ""
+				
+	except Exception as e: # because when a long string of name lookups errors in the middle, it hurts
+		print e
+		return ""
 
-				if not taxid: # look up through uniprot
-					page_taxa = urllib2.urlopen('http://www.uniprot.org/taxonomy/?query={}'.format(url_name))
-					for line in page_taxa:
-						if line.startswith("</script>"):
-							taxid = line.partition("tr id=\"")[2].partition("\"")[0]
-							break;
 
-					if not taxid:
-						if 'gca' in original_name.lower() or '_str_' in original_name.lower():
-							name = original_name.lower().partition('_gca')[0].partition('_str_')[0]
+def lookup_tax(original_name):
+	global tax_dict
 
-							url_name = urllib.quote_plus(name.translate(string.maketrans("()[]:","     ").replace('_',' ').strip()))
-							handle = Entrez.esearch(db="taxonomy", term=url_name)
-							records = Entrez.read(handle)
-							taxid = records['IdList']
-
-						if not taxid:
-							print "\t Unable to find {}".format(original_name)
-							print url_name
-							return ""
-		'''
-		if str(taxid) == '178505':
-			print original_name
-			print url_name
-		'''
-
+	taxid = get_taxid(original_name)
+	if not taxid or isinstance(taxid,Taxonomy): # if it's blank or is already a taxonomy
+		return taxid
+	
+	try:
 		# Get taxonomy for id
 		handle = Entrez.efetch(db="taxonomy", id=taxid, mode="text", rettype="xml")
 		taxon = Entrez.read(handle)[0] # only grab the first
@@ -466,13 +478,9 @@ def lookup_tax(original_name):
 		if official_name.startswith('[Eubacterium'): # special case handling
 			lineage['genus'] = '1730'
 
-		if type(name) == int or name.isdigit():
-			tax_entry = tax_dict.add_taxa(official_name,official_name,taxid,lineage)
-			tax_entry = tax_dict.add_taxa(original_name,official_name,taxid,lineage)
-			print "{} -> {}".format(original_name,official_name)
-		else:
-			tax_entry = tax_dict.add_taxa(original_name,official_name,taxid,lineage)
-			print "{} -> {}".format(original_name,official_name)
+		tax_entry = tax_dict.add_taxa(official_name,official_name,taxid,lineage)
+		tax_entry = tax_dict.add_taxa(original_name,official_name,taxid,lineage)
+		print "{} -> {}".format(original_name,official_name)
 
 		if '2759' in lineage.values(): # catch eukaryotes
 			print "\t\t\tWarning: {} appears to be a eukaryote!".format(original_name)
@@ -487,16 +495,14 @@ def lookup_tax(original_name):
 def lookup_tax_list(species_list):
 	species_tax = []
 	for name in species_list:
-		add_to_list = lookup_tax('Bacteria').taxid # default
 		if not(len(name) == 8 and name[0:2].isalpha() and name[3:7].isdigit()):
 			# skip unlookupable entries like CJG34856
-			tax_entry = lookup_tax(name)
-			if tax_entry:
-				add_to_list = tax_entry.taxid
-			else:
-				tax_entry = lookup_tax(name.rpartition('_')[0])
+
+			try:
+				add_to_list = lookup_tax(name).taxid
+			except:
 				try:
-					add_to_list = tax_entry.taxid
+					add_to_list = lookup_tax(name.rpartition('_')[0]).taxid
 				except:
 					print "Unable to find {} -- complete failure".format(name)
 		species_tax.append(add_to_list)
@@ -521,7 +527,7 @@ def process_input(filename,program,fragmented=False):
 		est.species = lookup_tax_list(est.species) # from this point on, species are taxids
 		est.remake_index()
 		return est
-		#input_table = cPickle.load(open(filename +'.p','rb'))
+		input_table = cPickle.load(open(filename +'.p','rb'))
 	else:
 		input_file = open(filename,'r')
 
@@ -595,7 +601,9 @@ def process_input(filename,program,fragmented=False):
 	est.sort_by_name()
 	est.set_threshold()
 
-	#cPickle.dump(est,open(filename +'.p','wb'))
+	if program == 'kraken':
+		print 'Saving kraken output to file...'
+		cPickle.dump(est,open(filename +'.p','wb'))
 
 	if not transcripts:
 		est.species = lookup_tax_list(est.species) # from this point on, species are taxids
@@ -849,12 +857,13 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		all_sort = zip(present_species,present_true,present_est,present_errors)
 		all_sort.sort( key=lambda x: x[2],reverse=True )
 		all_sort.sort( key=lambda x: x[1],reverse=True )
-		all_sort.sort(key=lambda x: x[0]) #sort by name for troubleshooting
+		#all_sort.sort(key=lambda x: x[0]) #sort by name for troubleshooting
 
+		'''
 		for r in all_sort:
 			#if r[2] == 0: # no estimated counts
 			print r
-
+		'''
 		present_species,present_true,present_est,present_errors = zip(*all_sort)
 
 		plotfunctions.plot_setup_pre(
@@ -906,9 +915,13 @@ def graph_est(est, expname, tier, show_graphs, save_graphs, errors):
 	fil_sp,fil_est = zip(*all_filter)
 	#fil_est = numpy.log(fil_est)
 
-	print "Results that passed filter:"
-	pprint.pprint(all_filter)
 
+	print "Results that passed filter:"
+	# calculate % for each result
+	fil_per = [round(100*n/math.fsum(fil_est),1) for n in fil_est]
+	all_display = zip(fil_sp,fil_est,fil_per)
+	pprint.pprint(all_display)
+	
 	plotfunctions.plot_setup_pre(
 		"Human gut metatranscriptome {}-level estimated counts"
 		.format(tier), xlabels = fil_sp, xticks = range(0,xmax),
