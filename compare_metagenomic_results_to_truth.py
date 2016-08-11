@@ -274,7 +274,7 @@ def collapse_duplicates(raw_data):
 	set_plasmids = {}
 	for sp,ab,co in dup_data:
 		if 'taxid' in sp: # retain useful information
-			name = sp.rpartition('|')[0]
+			name = sp.rpartition('|')[0] # last segment is usually the original chromosome etc name
 		else:
 			name = sp.partition('_gi|')[0].partition('|')[0].partition('_gca')[0] #the prepended strain name
 		set_plasmids.setdefault(name,0) # so there's always a plasmid count value for any given name key
@@ -317,6 +317,7 @@ def collapse_duplicates(raw_data):
 
 def get_taxid(original_name):
 	
+	# problematic names
 	known_names = dict([('bacterium ellin514 strain ellin514','Pedosphaera parvula Ellin514'),
 						('bacteroidetes sp. f0058','Bacteroidetes oral taxon 274 str. F0058'),
 						('baumannia cicadellinicola str. hc','Baumannia cicadellinicola str. Hc (Homalodisca coagulata)'),
@@ -438,8 +439,7 @@ def get_taxid(original_name):
 			taxid = records['IdList']
 			return taxid
 
-		print "\t Unable to find {}".format(original_name)
-		print url_name
+		print "\t Unable to find {} when looked up as {}".format(original_name,url_name)
 		return ""
 				
 	except Exception as e: # because when a long string of name lookups errors in the middle, it hurts
@@ -523,14 +523,16 @@ def process_input(filename,program,fragmented=False):
 	suffix = filename.rpartition('.')[2]
 
 	if os.path.exists(filename +'.p'): # kraken output is slow to process, so look for saved processed version
+		print "Loading kraken input from pickled file..."
 		est = cPickle.load(open(filename +'.p','rb'))
 		est.set_threshold()
 		est.species = lookup_tax_list(est.species) # from this point on, species are taxids
 		est.remake_index()
+		est = collapse_duplicates(est)
+		est.remake_index()
 		return est
-		input_table = cPickle.load(open(filename +'.p','rb'))
-	else:
-		input_file = open(filename,'r')
+	
+	input_file = open(filename,'r')
 
 	raw_est = Dataset()
 	if program == 'express':
