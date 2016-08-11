@@ -21,6 +21,7 @@ import copy
 import pprint
 import scipy.stats
 
+scriptdir = os.path.abspath(os.path.dirname(sys.argv[0]))
 numpy.set_printoptions(precision=4)
 
 class TaxaDict():
@@ -619,15 +620,15 @@ def dataset_truth(dataset='i100'):
 	truth = Dataset()
 	# for metatranscriptome test
 	if dataset == 'simmt_have':
-		i100_csv = [r for r in csv.reader(open('simmt_truth_have_old.csv','r'), 'excel')]
+		i100_csv = [r for r in csv.reader(open(os.path.join(scriptdir,'simmt_truth_have_old.csv'),'r'), 'excel')]
 	elif dataset == 'simmt_all':
-		i100_csv = [r for r in csv.reader(open('simmt_truth_fixed.csv','r'), 'excel')]
+		i100_csv = [r for r in csv.reader(open(os.path.join(scriptdir,'simmt_truth_fixed.csv'),'r'), 'excel')]
 	elif dataset == 'simmt_transcripts':
-		i100_csv = [r for r in csv.reader(open('simmt_truth_transcripts_old.csv','r'), 'excel')]
+		i100_csv = [r for r in csv.reader(open(os.path.join(scriptdir,'simmt_truth_transcripts_old.csv'),'r'), 'excel')]
 	elif dataset == 'clean_mash':
-		i100_csv = [r for r in csv.reader(open('i100_truth_mash.csv','r'), 'excel')]
+		i100_csv = [r for r in csv.reader(open(os.path.join(scriptdir,'i100_truth_mash.csv'),'r'), 'excel')]
 	else: # actual i100
-		i100_csv = [r for r in csv.reader(open('i100_truth.csv','r'), 'excel')]
+		i100_csv = [r for r in csv.reader(open(os.path.join(scriptdir,'i100_truth.csv'),'r'), 'excel')]
 
 	truth.set_by_array(list(i100_csv))
 
