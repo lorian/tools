@@ -973,14 +973,13 @@ def main(argv=sys.argv):
 
 	global tax_dict
 	pickle_len = 0
-	if os.path.exists('species_taxonomy.pickle') and not transcripts: # stored taxonomy information from previous runs
+	if os.path.exists(os.path.join(scriptdir,'species_taxonomy.pickle')) and not transcripts: # stored taxonomy information from previous runs
 		print "Loading taxonomy dict..."
-		tax_dict = cPickle.load(open('species_taxonomy.pickle','rb'))
+		tax_dict = cPickle.load(open(os.path.join(scriptdir,'species_taxonomy.pickle'),'rb'))
 		pickle_len = len(tax_dict.names.keys())
 
 	truth = dataset_truth(dataset)
 	estimated = process_input(filename,program)
-	print truth.lookup_count('erwinia_tasmaniensis_et1_99')
 
 	if not transcripts:
 		est_j_species = collapse_strains(estimated,'species')
@@ -1005,7 +1004,7 @@ def main(argv=sys.argv):
 
 	if pickle_len != len(tax_dict.names.keys()): # don't re-pickle if nothing new is added
 		print "Saving taxonomy dict..."
-		cPickle.dump(tax_dict,open('species_taxonomy.pickle','wb'))
+		cPickle.dump(tax_dict,open(os.path.join(scriptdir,'species_taxonomy.pickle'),'wb'))
 
 	if filename.endswith('.clark'): # clark doesn't do strain-level assignment
 		dataset_pairs = [('species',true_j_species,est_j_species),('genus',true_j_genus,est_j_genus),('phylum',true_j_phylum,est_j_phylum)]
