@@ -417,7 +417,7 @@ def get_taxid(original_name):
 			return taxid
 			
 		# lookup manually instead of through biopython
-		page_taxa = urllib2.urlopen('http://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=taxonomy&term={}'.format(url_name))
+		page_taxa = urllib2.urlopen('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=taxonomy&term={}'.format(url_name))
 		for line in page_taxa:
 			line = string.replace(line,"\t","")
 			if line.startswith("<Id>"):
