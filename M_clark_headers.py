@@ -31,9 +31,11 @@ def change_header(f):
 			GCA = [w for w in keep_ids if w.startswith('GCA_')]
 			GI = [w for w in keep_ids if w.startswith('gi_')]
 			if GCA and GI:
-				text = ">gi|{0}|gb|{1}|{2}|\n".format(GCA[0],GI[0],line[1:])
+				text = ">gi|{0}|gb|{1}|{2}\n".format(GCA[0],GI[0],line[1:])
 			elif GCA:
-				text = ">{1}|{2}|\n".format(GCA[0],line[1:])
+				text = ">{0}|{1}\n".format(GCA[0],line[1:])
+			elif GI:
+				text = ">gi|{0}|{1}\n".format(GI[0],line[1:])
 			else:
 				text = line
 				print "Couldn't get GCA for {}".format(f)
