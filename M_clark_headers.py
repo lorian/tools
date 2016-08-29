@@ -25,20 +25,19 @@ def change_header(f):
 			new_name = basename.partition('.1.30')[0].partition('.GCA')[0].replace(" ", "_")
 			# try to filter out only the useful parts of the original header: GCA, NC, or gi uids
 			name_parts = filter(None, re.split("[|:]+", line.replace('gi|','gi_').replace('_gi', '|gi')))
-			keep_ids = [w for w in name_parts if (w.startswith('GCA_') or w.startswith('NC_') or w.startswith('gi_'))]
-			
+
 			# gi|XXXXXX|gb|ACCESSION.VERSION| Name for CLARK
-			GCA = [w for w in keep_ids if w.startswith('GCA_')]
-			GI = [w for w in keep_ids if w.startswith('gi_')]
-			if GCA and GI:
-				text = ">gi|{0}|gb|{1}|{2}\n".format(GCA[0],GI[0],line[1:])
-			elif GCA:
-				text = ">{0}|{1}\n".format(GCA[0],line[1:])
+			NC = [w for w in name_parts if (w.startswith('NC_') or w.startwith('AC_'))]
+			GI = [w for w in name_parts if w.startswith('gi_')]
+			if NC and GI:
+				text = ">gi|{0}|gb|{1}|{2}\n".format(NC[0],GI[0],line[1:])
+			elif NC:
+				text = ">{0}|{1}\n".format(NC[0],line[1:])
 			elif GI:
 				text = ">gi|{0}|{1}\n".format(GI[0],line[1:])
 			else:
 				text = line
-				print "Couldn't get GCA for {}".format(f)
+				print "Couldn't get NC for {}".format(f)
 				print line
 	
 		elif line.startswith('>'):
