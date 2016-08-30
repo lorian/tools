@@ -49,11 +49,11 @@ for f in original_files:
 output = open(os.path.expanduser('targets.txt'),'w')
 
 with open(os.path.expanduser('files_excluded.txt'),'r') as files:
+	next(files) # skip first line
 	for line in files:
-		taxid = taxids[line.rpartition('/')[2]]
+		taxid = taxids[line.rpartition('/')[2].rstrip()]
 		if taxid:
 			print "{0}\t{1}\n".format(line.rstrip(),taxid)
 			output.write("{0}\t{1}\n".format(line.rstrip(),taxid))
 		else:
 			print "Unable to lookup taxid for {}".format(line)
-'''
