@@ -48,13 +48,16 @@ def collapse_contigs(f):
 			keep_ids = [w for w in name_parts if (w.startswith('GCA_') or w.startswith('NC_') or w.startswith('gi_'))]
 			for id in keep_ids:
 				taxid = get_taxid(id)
-				if taxid:
+				if taxid.isdigit()
 					text = ">{0}|kraken:taxid|{1}|{2}\n".format(new_name,taxid,"|".join(keep_ids))
 					break
-			if not taxid:
+			if not taxid.isdigit():
 				print "Unable to lookup taxid for {}".format(f)
-				GI = line.partition('gi')[2].partition('|')[0].strip('_').strip('|')
+				GI = line.partition('gi|')[2].partition('|')[0].strip('_').strip('|').strip()
+				if not GI:
+					GI = line.partition('gi_')[2].partition('|')[0].strip('_').strip('|').strip()
 				text = ">gi|{0}|{1}|{2}\n".format(GI,new_name,"|".join(keep_ids))
+				print text
 			
 			firstline = False
 		elif line.startswith('>'):
