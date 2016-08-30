@@ -49,13 +49,13 @@ def collapse_contigs(f):
 			for id in keep_ids:
 				taxid = get_taxid(id)
 				if taxid:
+					text = ">{0}|kraken:taxid|{1}|{2}\n".format(new_name,taxid,"|".join(keep_ids))
 					break
 			if not taxid:
 				print "Unable to lookup taxid for {}".format(f)
-				print line
-				print keep_ids
+				GI = line.partition('gi')[2].partition('|')[0].strip('_').strip('|')
+				text = ">gi|{0}|{1}|{2}\n".format(GI,new_name,"|".join(keep_ids))
 			
-			text = ">{0}|kraken:taxid|{1}|{2}\n".format(new_name,taxid,"|".join(keep_ids))
 			firstline = False
 		elif line.startswith('>'):
 			text += 'NNNNNNNNNN' #indicate possible gaps between chr, plasmids, shotgun pieces, etc
@@ -72,5 +72,5 @@ def collapse_contigs(f):
 
 original_files = [f for f in os.listdir('.') if f.endswith("fa")]
 
-for f in original_files
+for f in original_files:
 	collapse_contigs(f)
