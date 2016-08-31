@@ -141,6 +141,9 @@ with open('mash_names.txt','w') as f:
 	f.write('\n'.join(final_names) + '\n')
 print "Files to be moved listed in mash_names.txt."
 
+# Check how many true strains are present
+true_strains = [n for n in final_names if n.endswith('.mfa')]
+
 if not args.dry_run: #don't create or move files
 
 	# should make directory if it doesn't already exist
@@ -160,7 +163,7 @@ if not args.dry_run: #don't create or move files
 		if not basename+'.cat.fa' in moved_files:
 			print "Missing: {}".format(f)
 		
-	print "All hits: {}\t At least 5 hits: {}\t Species: {}\t Strains kept: {}\t Strains moved: {}\t".format(len(mash_1.keys()), len(mash_5.keys()), len(species), len(final_names), len(moved_files))
+	print "All hits: {}\t At least 5 hits: {}\t Species: {}\t Strains kept: {}\t Strains moved: {}\t True strains: {}/100\t".format(len(mash_1.keys()), len(mash_5.keys()), len(species), len(final_names), len(moved_files))
 		
 else:
-	print "All hits: {}\t At least 5 hits: {}\t Species: {}\t Strains kept: {}\t".format(len(mash_1.keys()), len(mash_5.keys()), len(species), len(final_names))
+	print "All hits: {}\t At least 5 hits: {}\t Species: {}\t Strains kept: {}\t True strains: {}/100\t".format(len(mash_1.keys()), len(mash_5.keys()), len(species), len(final_names), len(true_strains))
