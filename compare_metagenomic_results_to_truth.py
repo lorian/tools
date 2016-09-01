@@ -300,7 +300,7 @@ def collapse_duplicates(raw_data):
 			print name
 			print set_co[name]
 	'''
-	
+
 	# New, clean dataset for data without duplicates
 	undupe = Dataset()
 
@@ -316,7 +316,7 @@ def collapse_duplicates(raw_data):
 	return undupe
 
 def get_taxid(original_name):
-	
+
 	# problematic names
 	known_names = dict([('bacterium ellin514 strain ellin514','Pedosphaera parvula Ellin514'),
 						('bacteroidetes sp. f0058','Bacteroidetes oral taxon 274 str. F0058'),
@@ -392,7 +392,7 @@ def get_taxid(original_name):
 	if 'taxid' in original_name:
 		taxid = original_name.partition('taxid|')[2].partition('|')[0]
 		return taxid
-		
+
 	name = original_name.partition('|')[0].lower().replace('_',' ').strip()
 
 	if name in known_names.keys(): # problematic names
@@ -415,7 +415,7 @@ def get_taxid(original_name):
 		taxid = records['IdList']
 		if taxid:
 			return taxid
-			
+
 		# lookup manually instead of through biopython
 		page_taxa = urllib2.urlopen('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=taxonomy&term={}'.format(url_name))
 		for line in page_taxa:
@@ -441,7 +441,7 @@ def get_taxid(original_name):
 
 		print "\t Unable to find {} when looked up as {}".format(original_name,url_name)
 		return ""
-				
+
 	except Exception as e: # because when a long string of name lookups errors in the middle, it hurts
 		print e
 		return ""
@@ -453,7 +453,7 @@ def lookup_tax(original_name):
 	taxid = get_taxid(original_name)
 	if not taxid or isinstance(taxid,Taxonomy): # if it's blank or is already a taxonomy
 		return taxid
-	
+
 	try:
 		# Get taxonomy for id
 		handle = Entrez.efetch(db="taxonomy", id=taxid, mode="text", rettype="xml")
@@ -521,17 +521,6 @@ def process_input(filename,program,fragmented=False):
 	""" Pull species names, abundance, and counts out of input file """
 
 	suffix = filename.rpartition('.')[2]
-
-	if os.path.exists(filename +'.p'): # kraken output is slow to process, so look for saved processed version
-		print "Loading kraken input from pickled file..."
-		est = cPickle.load(open(filename +'.p','rb'))
-		est.set_threshold()
-		est.species = lookup_tax_list(est.species) # from this point on, species are taxids
-		est.remake_index()
-		est = collapse_duplicates(est)
-		est.remake_index()
-		return est
-	
 	input_file = open(filename,'r')
 
 	raw_est = Dataset()
@@ -555,16 +544,33 @@ def process_input(filename,program,fragmented=False):
 		raw_est.abundance = [float(i) if i != '-' else 0.0 for i in zip(*input_data)[4]]
 
 	elif program == 'kraken':
-		if not os.path.exists(filename +'.p'):
+		if not filename.endswith('.report'):
+			if os.path.exists(filename +'.p'): # kraken output is slow to process, so look for saved processed version
+				print "Loading kraken input from pickled file..."
+				est = cPickle.load(open(filename +'.p','rb'))
+				est.set_threshold()
+				est.species = lookup_tax_list(est.species) # from this point on, species are taxids
+				est.remake_index()
+				est = collapse_duplicates(est)
+				est.remake_index()
+				return est
 			input_csv = csv.reader(input_file, 'excel-tab')
 			input_counts = collections.Counter()
 			for r in input_csv:
 				input_counts.update([r[1].rpartition(';')[2]])
 			input_table = [(k.rpartition(';')[2],v) for k,v in input_counts.iteritems()]
 			cPickle.dump(input_table,open(filename +'.p','wb')) # save processed form
-		raw_est.species = zip(*input_table)[0]
-		raw_est.counts = [float(i) for i in zip(*input_table)[1]]
-		raw_est.abundance = [0]*len(raw_est.species)
+			raw_est.species = zip(*input_table)[0]
+			raw_est.counts = [float(i) for i in zip(*input_table)[1]]
+			raw_est.abundance = [0]*len(raw_est.species)
+		else: # nice shiny report format
+			input_csv = csv.reader(input_file, 'excel-tab')
+			input_data = [r for r in input_csv]
+			input_data = input_data[1:] #remove unclassified row
+			raw_est.species = ["{}|taxid|{}|".format(r[5].strip(),r[4]) for r in input_data] # combine name and taxid
+			raw_est.counts = [float(i) for i in zip(*input_data)[2]]
+			raw_est.abundance = [float(i) for i in zip(*input_data)[0]]
+			raw_est.size = raw_est.null_list()
 
 	elif program == 'kallisto':
 		input_csv = csv.reader(input_file, 'excel-tab')
@@ -582,6 +588,16 @@ def process_input(filename,program,fragmented=False):
 		raw_est.species = zip(*input_data)[0]
 		raw_est.counts = [float(i) for i in zip(*input_data)[2]]
 		raw_est.abundance = [0]*len(raw_est.species)
+		raw_est.size = raw_est.null_list()
+
+	elif program == 'bracken':
+		input_csv = csv.reader(input_file, 'excel-tab')
+		input_data = [r for r in input_csv]
+		input_data = input_data[1:] #remove header row
+		raw_est.species = ["{}|taxid|{}|".format(r[0],r[1]) for r in input_data] # combine name and taxid
+		raw_est.counts = [float(i) for i in zip(*input_data)[5]]
+		raw_est.abundance = [float(i) for i in zip(*input_data)[6]]
+		raw_est.size = raw_est.null_list()
 
 	else:
 		print "File is not supported input type"
@@ -741,12 +757,18 @@ def calc_kraken_error(truth,est,rank):
 	print "Precision: ,{}/({}+{})".format(C,D,E)
 	print "\t= ,{}".format(C/(D+E))
 
-def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor, show_graphs, save_graphs, errors):
+def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor, show_graphs, save_graphs, errors, program='kallisto'):
 	# These imports are here so script can run on server w/out graphics
 	import plotfunctions
 	import matplotlib
 	import seaborn
 
+	# format program name
+	if program == 'clark':
+		program = 'CLARK-S'
+	if program == 'bracken':
+		program = 'Bracken'
+		
 	# Drop any entry that is above the targeted taxa level
 	# sometimes the strain-level filter filters out species-level genomes, so add truth back in
 	if not transcripts:
@@ -779,23 +801,21 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		all_est = [filtered_est.counts[filtered_est.species.index(sp)] if sp in filtered_est.species else 0 for sp in filtered_est.species]
 		all_true = [truth.counts[truth.species.index(sp)] if sp in truth.species else 0 for sp in filtered_est.species]
 
-		'''
+		
 		# print present species
-		disp_ab = zip(all_species,all_est)
-		cutoff_ab = sorted(disp_ab, reverse=True, key=lambda x:x[1])
-		with open('species_hits.txt','w') as cutoff_file:
-			for ab in cutoff_ab:
-				cutoff_file.write("{},{}\n".format(ab[0],ab[1]))
-		print len(cutoff_ab)
-		'''
-
+		disp_ab = zip(all_species,all_est,all_true)
+		#with open('species_hits.txt','w') as cutoff_file:
+		#	for ab in disp_ab:
+		#		cutoff_file.write("{},{}\n".format(ab[0],ab[1]))
+		#pprint.pprint(disp_ab)
+		
 	all_diff = []
 	for i,a in enumerate(all_est):
 		try:
 			all_diff.append(100*(a - all_true[i]) / max(a,all_true[i]))
 		except ZeroDivisionError:
 			all_diff.append(0) # if both the estimate and the actual are 0, we're good here
-
+	
 	# graph true abundances
 	if len(filtered_est.species) == len(truth.species):
 		xmax = len(truth.species)
@@ -805,8 +825,8 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		ab_filter.sort( key=lambda x: x[1],reverse=True )
 		ab_species,ab_true,ab_adjusted = zip(*ab_filter)
 
-		plotfunctions.plot_setup_pre("{}-level counts in simulated data"
-			.format(tier.capitalize(),expname), xlabels = ab_species,
+		plotfunctions.plot_setup_pre("{} estimated counts at {}-level"
+			.format(program,tier), xlabels = ab_species,
 			xticks = range(0,xmax), xrotation = -90, yaxislabel = 'Counts')
 
 		plotfunctions.plot(x, ab_true, color='blue', label='True')
@@ -870,8 +890,8 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		present_species,present_true,present_est,present_errors = zip(*all_sort)
 
 		plotfunctions.plot_setup_pre(
-			"Estimated counts at {}-level"
-			.format(tier), xticks = range(0,xmax),
+			"{} estimated counts at {}-level"
+			.format(program,tier), xticks = range(0,xmax),
 			xrotation = -90, yaxislabel = 'Counts', xlabels = present_species)
 
 		plotfunctions.plot(x, present_true, color='blue', label="True")
@@ -924,7 +944,7 @@ def graph_est(est, expname, tier, show_graphs, save_graphs, errors):
 	fil_per = [round(100*n/math.fsum(fil_est),1) for n in fil_est]
 	all_display = zip(fil_sp,fil_est,fil_per)
 	pprint.pprint(all_display)
-	
+
 	plotfunctions.plot_setup_pre(
 		"Human gut metatranscriptome {}-level estimated counts"
 		.format(tier), xlabels = fil_sp, xticks = range(0,xmax),
@@ -1008,7 +1028,7 @@ def main(argv=sys.argv):
 		print "Saving taxonomy dict..."
 		cPickle.dump(tax_dict,open(os.path.join(scriptdir,'species_taxonomy.pickle'),'wb'))
 
-	if filename.endswith('.clark'): # clark doesn't do strain-level assignment
+	if program == 'clark' or program == 'bracken': # clark and bracken don't do strain-level assignment
 		dataset_pairs = [('species',true_j_species,est_j_species),('genus',true_j_genus,est_j_genus),('phylum',true_j_phylum,est_j_phylum)]
 	elif not transcripts:
 		dataset_pairs = [('strain',truth,estimated),('species',true_j_species,est_j_species),('genus',true_j_genus,est_j_genus),('phylum',true_j_phylum,est_j_phylum)]
@@ -1032,7 +1052,7 @@ def main(argv=sys.argv):
 			#	print "\tPrecision and sensitivity:"
 			#	calc_kraken_error(true,est,label)
 			if show_graphs or save_graphs:
-				graph_error(true, est, adjusted_abundance, diff, exp_name, label, norm_factor, show_graphs, save_graphs, bootstrap_counts)
+				graph_error(true, est, adjusted_abundance, diff, exp_name, label, norm_factor, show_graphs, save_graphs, bootstrap_counts, args.program)
 
 if __name__ == "__main__":
 	main()
