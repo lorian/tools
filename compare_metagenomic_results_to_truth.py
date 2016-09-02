@@ -394,7 +394,6 @@ def get_taxid(original_name):
 		return taxid
 
 	name = original_name.partition('|')[0].lower().replace('_',' ').strip()
-
 	if name in known_names.keys(): # problematic names
 		name = known_names[name]
 
@@ -408,7 +407,6 @@ def get_taxid(original_name):
 
 		# Clean name for URL use; replace marks that cause problems for NCBI lookup with spaces
 		url_name = urllib.quote_plus(name.translate(string.maketrans("()[]:","     ").replace('_',' ').strip()))
-
 		# Look up taxonomy ID
 		handle = Entrez.esearch(db="taxonomy", term=url_name)
 		records = Entrez.read(handle)
@@ -444,6 +442,7 @@ def get_taxid(original_name):
 
 	except Exception as e: # because when a long string of name lookups errors in the middle, it hurts
 		print e
+		print original_name
 		return ""
 
 
@@ -489,6 +488,7 @@ def lookup_tax(original_name):
 
 	except Exception as e: # because when a long string of name lookups errors in the middle, it hurts
 		print e
+		print original_name
 		return ""
 
 	return tax_entry
@@ -506,6 +506,7 @@ def lookup_tax_list(species_list):
 					add_to_list = lookup_tax(name.rpartition('_')[0]).taxid
 				except:
 					print "Unable to find {} -- complete failure".format(name)
+					add_to_list = 2 # bacteria
 		species_tax.append(add_to_list)
 	return species_tax
 
@@ -538,10 +539,10 @@ def process_input(filename,program,fragmented=False):
 		input_csv = csv.reader(input_file, 'excel')
 		input_data = [r for r in input_csv]
 		input_data = input_data[1:-1] #remove header row and unknown line at end
-		raw_est.species = zip(*input_data)[0]
+		raw_est.species = [r[0]+"|taxid|"+r[1]+"|" for r in input_data] # combine name and taxid
 		raw_est.clean_names()
-		raw_est.counts = [float(i) for i in zip(*input_data)[2]]
-		raw_est.abundance = [float(i) if i != '-' else 0.0 for i in zip(*input_data)[4]]
+		raw_est.counts = [float(i) for i in zip(*input_data)[3]]
+		raw_est.abundance = [float(i) if i != '-' else 0.0 for i in zip(*input_data)[5]]
 
 	elif program == 'kraken':
 		if not filename.endswith('.report'):
@@ -691,6 +692,7 @@ def calc_counts_error(truth,est):
 
 	# normalize counts to only ones that mapped at all:
 	normalization_factor = sum(truth.counts)/sum(est.counts) # total counts/counts assigned
+	normalization_factor = 1
 	normalized_counts = numpy.array(adjusted_counts)*normalization_factor
 
 	diff_n = 100*(numpy.array(normalized_counts) - numpy.array(truth.counts))/numpy.array(truth.counts)
@@ -765,10 +767,10 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 
 	# format program name
 	if program == 'clark':
-		program = 'CLARK-S'
+		program = 'CLARK'
 	if program == 'bracken':
 		program = 'Bracken'
-		
+
 	# Drop any entry that is above the targeted taxa level
 	# sometimes the strain-level filter filters out species-level genomes, so add truth back in
 	if not transcripts:
@@ -801,21 +803,21 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		all_est = [filtered_est.counts[filtered_est.species.index(sp)] if sp in filtered_est.species else 0 for sp in filtered_est.species]
 		all_true = [truth.counts[truth.species.index(sp)] if sp in truth.species else 0 for sp in filtered_est.species]
 
-		
+
 		# print present species
 		disp_ab = zip(all_species,all_est,all_true)
 		#with open('species_hits.txt','w') as cutoff_file:
 		#	for ab in disp_ab:
 		#		cutoff_file.write("{},{}\n".format(ab[0],ab[1]))
 		#pprint.pprint(disp_ab)
-		
+
 	all_diff = []
 	for i,a in enumerate(all_est):
 		try:
 			all_diff.append(100*(a - all_true[i]) / max(a,all_true[i]))
 		except ZeroDivisionError:
 			all_diff.append(0) # if both the estimate and the actual are 0, we're good here
-	
+
 	# graph true abundances
 	if len(filtered_est.species) == len(truth.species):
 		xmax = len(truth.species)
@@ -1048,9 +1050,9 @@ def main(argv=sys.argv):
 		else:
 			print "\n{}-LEVEL ERROR:".format(label.upper())
 			diff, adjusted_abundance, norm_factor = calc_counts_error(true,est)
-			#if label != 'strain':
-			#	print "\tPrecision and sensitivity:"
-			#	calc_kraken_error(true,est,label)
+			if label != 'strain':
+				print "\tPrecision and sensitivity:"
+				calc_kraken_error(true,est,label)
 			if show_graphs or save_graphs:
 				graph_error(true, est, adjusted_abundance, diff, exp_name, label, norm_factor, show_graphs, save_graphs, bootstrap_counts, args.program)
 
