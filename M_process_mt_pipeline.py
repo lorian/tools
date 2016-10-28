@@ -26,5 +26,4 @@ for sp in hits:
 			output = os.system("mv {}* ../".format(genus))
 
 pprint.pprint(failed_hits)
-print len(failed_hits)
-print len(hits)
+print "Got: {0} \tMissed: {1}".format(len(hits),len(failed_hits))
