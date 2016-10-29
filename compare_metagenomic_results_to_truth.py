@@ -1003,6 +1003,10 @@ def main(argv=sys.argv):
 		pickle_len = len(tax_dict.names.keys())
 
 	truth = dataset_truth(dataset)
+	if pickle_len != len(tax_dict.names.keys()): # don't re-pickle if nothing new is added
+		print "Saving taxonomy dict..."
+		cPickle.dump(tax_dict,open(os.path.join(scriptdir,'species_taxonomy.pickle'),'wb'))
+
 	estimated = process_input(filename,program)
 
 	if not transcripts:
