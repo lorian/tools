@@ -643,7 +643,7 @@ def dataset_truth(dataset='i100'):
 	elif dataset == 'simmt_all':
 		i100_csv = [r for r in csv.reader(open(os.path.join(scriptdir,'simmt_truth_fixed.csv'),'r'), 'excel')]
 	elif dataset == 'simmt_transcripts':
-		i100_csv = [r for r in csv.reader(open(os.path.join(scriptdir,'simmt_truth_transcripts_old.csv'),'r'), 'excel')]
+		i100_csv = [r for r in csv.reader(open(os.path.join(scriptdir,'simmt_truth_transcripts_have.csv'),'r'), 'excel')]
 	elif dataset == 'clean_mash':
 		i100_csv = [r for r in csv.reader(open(os.path.join(scriptdir,'i100_truth_mash.csv'),'r'), 'excel')]
 	else: # actual i100
@@ -692,7 +692,7 @@ def calc_counts_error(truth,est):
 
 	# normalize counts to only ones that mapped at all:
 	normalization_factor = sum(truth.counts)/sum(est.counts) # total counts/counts assigned
-	normalization_factor = 1
+	#normalization_factor = 1
 	normalized_counts = numpy.array(adjusted_counts)*normalization_factor
 
 	diff_n = 100*(numpy.array(normalized_counts) - numpy.array(truth.counts))/numpy.array(truth.counts)
@@ -761,10 +761,10 @@ def calc_kraken_error(truth,est,rank):
 
 def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor, show_graphs, save_graphs, errors, program='kallisto'):
 	# These imports are here so script can run on server w/out graphics
-	import plotfunctions
 	import matplotlib
 	import seaborn
-
+	import plotfunctions
+		
 	# format program name
 	if program == 'clark':
 		program = 'CLARK'
@@ -805,11 +805,11 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 
 
 		# print present species
-		disp_ab = zip(all_species,all_est,all_true)
-		#with open('species_hits.txt','w') as cutoff_file:
-		#	for ab in disp_ab:
-		#		cutoff_file.write("{},{}\n".format(ab[0],ab[1]))
-		#pprint.pprint(disp_ab)
+		disp_ab = zip(all_species,[int(e) for e in all_est],[int(t) for t in all_true])
+		with open('species_hits.txt','w') as cutoff_file:
+			for ab in disp_ab:
+				cutoff_file.write("{},{}\n".format(ab[0],ab[1]))
+		pprint.pprint(sorted([d for d in disp_ab if d[2] > 0],key=lambda x: x[1]))
 
 	all_diff = []
 	for i,a in enumerate(all_est):
@@ -1050,9 +1050,9 @@ def main(argv=sys.argv):
 		else:
 			print "\n{}-LEVEL ERROR:".format(label.upper())
 			diff, adjusted_abundance, norm_factor = calc_counts_error(true,est)
-			if label != 'strain':
-				print "\tPrecision and sensitivity:"
-				calc_kraken_error(true,est,label)
+			#if label != 'strain':
+			#	print "\tPrecision and sensitivity:"
+			#	calc_kraken_error(true,est,label)
 			if show_graphs or save_graphs:
 				graph_error(true, est, adjusted_abundance, diff, exp_name, label, norm_factor, show_graphs, save_graphs, bootstrap_counts, args.program)
 
