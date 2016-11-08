@@ -273,10 +273,8 @@ def collapse_duplicates(raw_data):
 	set_sz = {}
 	set_plasmids = {}
 	for sp,ab,co in dup_data:
-		if 'taxid' in sp: # retain useful information
+		if 'taxid' in sp or 'gi_' in sp or 'gca_' in sp or 'gi|' in sp: # retain useful information
 			name = sp.rpartition('|')[0] # last segment is usually the original chromosome etc name
-		elif sp.startswith('gi|'): #no prepended strain name!
-			name = sp
 		else:
 			name = sp.partition('_gi|')[0].partition('|')[0].partition('_gca')[0] #the prepended strain name
 		set_plasmids.setdefault(name,0) # so there's always a plasmid count value for any given name key
@@ -395,7 +393,30 @@ def get_taxid(original_name):
 		taxid = original_name.partition('taxid|')[2].partition('|')[0]
 		return taxid
 	
-	
+	if 'gca_' in original_name:
+		uid = original_name.partition('gca_')[2].partition('|')[0]
+		page_taxa = urllib2.urlopen('http://www.ebi.ac.uk/ena/data/view/{}&display=xml'.format(uid))
+		for line in page_taxa:
+			if line.strip().startswith('<TAXON_ID>'):
+				return line.partition('>')[2].partition('<')[0]
+
+	if 'nc_' in original_name or 'gi_' in original_name or original_name.startswith('gi|'):
+		if 'gi_' in original_name:
+			uid = original_name.partition('gi_')[2].partition('|')[0]
+		elif 'gi|' in original_name:
+			uid = original_name.partition('gi|')[2].partition('|')[0]
+		else:
+			uid = 'NC_' + original_name.partition('nc_')[2].partition('|')[0]
+
+		handle = Entrez.efetch("nucleotide", id=uid, retmode="xml")
+		records = Entrez.read(handle)
+		# standard location
+		taxid = records[0]['GBSeq_feature-table'][0]['GBFeature_quals'][-1]['GBQualifier_value'].partition(':')[2]
+		if not taxid:
+			# sometimes it's not the last quals list, so we have to search for it
+			taxid = [r['GBQualifier_value'] for r in records[0]['GBSeq_feature-table'][0]['GBFeature_quals'] if ('taxon' in r['GBQualifier_value'])][0].partition(':')[2]
+		if taxid:
+			return taxid
 
 	name = original_name.partition('|')[0].lower().replace('_',' ').strip()
 	if name in known_names.keys(): # problematic names
