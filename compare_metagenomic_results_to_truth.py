@@ -275,6 +275,8 @@ def collapse_duplicates(raw_data):
 	for sp,ab,co in dup_data:
 		if 'taxid' in sp: # retain useful information
 			name = sp.rpartition('|')[0] # last segment is usually the original chromosome etc name
+		elif sp.startswith('gi|'): #no prepended strain name!
+			name = sp
 		else:
 			name = sp.partition('_gi|')[0].partition('|')[0].partition('_gca')[0] #the prepended strain name
 		set_plasmids.setdefault(name,0) # so there's always a plasmid count value for any given name key
@@ -392,6 +394,8 @@ def get_taxid(original_name):
 	if 'taxid' in original_name:
 		taxid = original_name.partition('taxid|')[2].partition('|')[0]
 		return taxid
+	
+	
 
 	name = original_name.partition('|')[0].lower().replace('_',' ').strip()
 	if name in known_names.keys(): # problematic names
@@ -599,6 +603,14 @@ def process_input(filename,program,fragmented=False):
 		raw_est.counts = [float(i) for i in zip(*input_data)[5]]
 		raw_est.abundance = [float(i) for i in zip(*input_data)[6]]
 		raw_est.size = raw_est.null_list()
+	
+	elif program == 'coman':
+		input_csv = csv.reader(input_file, 'excel-tab')
+		input_data = [r for r in input_csv]
+		raw_est.species = zip(*input_data)[0]
+		raw_est.counts = [float(i) for i in zip(*input_data)[1]]
+		raw_est.abundance = raw_est.null_list()
+		raw_est.size = raw_est.null_list()
 
 	else:
 		print "File is not supported input type"
@@ -608,8 +620,8 @@ def process_input(filename,program,fragmented=False):
 	raw_est.clean_names()
 	raw_est.remake_index()
 	if not transcripts:
-		raw_est.remove_matches('rna') # remove specific genes
-		raw_est.remove_matches('gene_')
+		#raw_est.remove_matches('rna') # remove specific genes
+		#raw_est.remove_matches('gene_')
 		est = collapse_duplicates(raw_est)
 
 	else:
@@ -620,7 +632,7 @@ def process_input(filename,program,fragmented=False):
 	est.convert_to_percentage()
 	est.sort_by_name()
 	est.set_threshold()
-
+	
 	if program == 'kraken':
 		print 'Saving kraken output to file...'
 		cPickle.dump(est,open(filename +'.p','wb'))
@@ -805,11 +817,11 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 
 
 		# print present species
-		disp_ab = zip(all_species,[int(e) for e in all_est],[int(t) for t in all_true])
-		with open('species_hits.txt','w') as cutoff_file:
-			for ab in disp_ab:
-				cutoff_file.write("{},{}\n".format(ab[0],ab[1]))
-		pprint.pprint(sorted([d for d in disp_ab if d[2] > 0],key=lambda x: x[1]))
+		#disp_ab = zip(all_species,[int(e) for e in all_est],[int(t) for t in all_true])
+		#with open('species_hits.txt','w') as cutoff_file:
+		#	for ab in disp_ab:
+		#		cutoff_file.write("{},{}\n".format(ab[0],ab[1]))
+		#pprint.pprint(sorted([d for d in disp_ab if d[2] > 0],key=lambda x: x[1]))
 
 	all_diff = []
 	for i,a in enumerate(all_est):
@@ -971,12 +983,12 @@ def main(argv=sys.argv):
 
 	parser = argparse.ArgumentParser(description='Compare output of metagenomic analysis tools with ground truth of dataset')
 	parser.add_argument('filename', help='Output file of metagenomic analysis tool')
-	parser.add_argument('program', nargs='?', default='kallisto', help='Source program that created output. Valid options are: kallisto, kraken, clark, gasic, express. Defaults to kallisto.')
+	parser.add_argument('program', nargs='?', default='kallisto', help='Source program that created output. Valid options are: kallisto, kraken, clark, gasic, express, coman. Defaults to kallisto.')
 
 	parser.add_argument('-g', '--show-graphs', action='store_true', help='Display graphs of calculated errors')
 	parser.add_argument('-s','--save-graphs', action='store_true', help='Save graphs of calculated errors to file')
 	parser.add_argument('--taxa', default='all', help='Desired taxa level of analysis. Accepts one of: strain, species, genus, phylum. Defaults to all levels.')
-	parser.add_argument('--dataset', default='i100', help='Dataset truth to be compared to. Accepts: i100, simmt_have, simmt_all, simmt_transcripts, no_truth. Defaults to i100.')
+	parser.add_argument('--dataset', default='i100', help='Dataset truth to be compared to. Accepts: i100, simmt_have, simmt_all, simmt_transcripts, no_truth, no_truth_transcripts. Defaults to i100.')
 	parser.add_argument('--bootstraps', default='', help='Directory containing .tsv files for kallisto bootstraps, to be converted into errors.')
 
 	args = parser.parse_args()
@@ -988,9 +1000,11 @@ def main(argv=sys.argv):
 	save_graphs = args.save_graphs
 	dataset = args.dataset
 
+	no_truth_datasets = ['no_truth','no_truth_transcripts']
+	transcript_datasets = ['simmt_transcripts','no_truth_transcripts']
 	global transcripts
 	transcripts = False
-	if dataset == 'simmt_transcripts':
+	if dataset in transcript_datasets:
 		transcripts = True
 
 	print "Running comparison on {}\n".format(filename)
@@ -1008,6 +1022,9 @@ def main(argv=sys.argv):
 		cPickle.dump(tax_dict,open(os.path.join(scriptdir,'species_taxonomy.pickle'),'wb'))
 
 	estimated = process_input(filename,program)
+	if pickle_len != len(tax_dict.names.keys()): # don't re-pickle if nothing new is added
+		print "Saving taxonomy dict..."
+		cPickle.dump(tax_dict,open(os.path.join(scriptdir,'species_taxonomy.pickle'),'wb'))
 
 	if not transcripts:
 		est_j_species = collapse_strains(estimated,'species')
@@ -1049,7 +1066,7 @@ def main(argv=sys.argv):
 		dataset_pairs = [('phylum',true_j_phylum,est_j_phylum)]
 
 	for label,true,est in dataset_pairs:
-		if dataset == 'no_truth':
+		if dataset in no_truth_datasets:
 			graph_est(est, exp_name, label, show_graphs, save_graphs, bootstrap_counts)
 		else:
 			print "\n{}-LEVEL ERROR:".format(label.upper())
