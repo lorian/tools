@@ -9,7 +9,7 @@ args = parser.parse_args()
 
 if os.path.exists('gene_annotation.pickle'):
 	print "Loading annotation dict..."
-	annotation_dict = cPickle.load(open('gene_annotation.pickle'),'rb')
+	annotation_dict = cPickle.load(open('gene_annotation.pickle','rb'))
 else:
 	# get dictionary of KO ids to second-tier pathway names
 	pathway_file = open('ko00001.keg','r')
