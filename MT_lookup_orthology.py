@@ -28,7 +28,6 @@ else:
 
 	# get dict of gene ids to KO ids
 	ortho_files = [f for f in os.listdir('.') if f.startswith("meta.ortho_")]
-	ortho_files = ['test.ortho',]
 	annotation_dict = dict()
 	for f in ortho_files:
 		with open(f,'r') as anno_file:
@@ -46,27 +45,12 @@ with open('gene_annotation.txt','w') as dict_file:
 	for k,v in annotation_dict.items():
 		dict_file.write(k +'|'+ v +'\n')
 		
-'''
-# get gene IDs from kallisto output
-input_file = open(args.filename,'r')
-input_csv = csv.reader(input_file, 'excel-tab')
-input_data = [r for r in input_csv] #[0] is gene ID, [3] is counts
-genes = dict()
-genes = {r[0].partition(':')[2].partition('_')[0]:float(r[3]) for r in input_data} # gene:count
-
-for g,c in iteritems(genes):
-	try:
-		category = annotation_dict[g]
-
-anno_genes = [annotation_dict[g] for g in genes.keys() if g in annotation_dict.keys()]
-print anno_genes
-'''
-
+		
 # annotate kallisto output
 anno_kallisto = open('annotated_'+args.filename,'w')
 with open(args.filename,'r') as input_file:
 	for line in input_file:
-		gene = line.partition(':')[2].partition('_')[0]
+		gene = line.partition(':')[2].partition('_')[0].partition('\t')[0]
 		try:
 			anno_kallisto.write(annotation_dict[gene] +'|'+ line)
 		except:
