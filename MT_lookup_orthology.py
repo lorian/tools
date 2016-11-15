@@ -41,9 +41,10 @@ else:
 	cPickle.dump(annotation_dict,open('gene_annotation.pickle','wb'))
 
 # save dict as file
-with open('gene_annotation.txt','w') as dict_file:
-	for k,v in annotation_dict.items():
-		dict_file.write(k +'|'+ v +'\n')
+if not os.path.exists('gene_annotation.txt'):
+	with open('gene_annotation.txt','w') as dict_file:
+		for k,v in annotation_dict.items():
+			dict_file.write(k +'|'+ v +'\n')
 		
 		
 # annotate kallisto output
