@@ -538,10 +538,9 @@ def lookup_tax_list(species_list):
 def fix_transcript_names(species):
 	cleanup = string.maketrans('-()+/','_____')
 	transcript_names = [(sp.partition("|")[0].translate(cleanup,'.[]') +"_"+
-		"..".join([d for d in sp.split(':') if d.isdigit() and len(d)>1])) for sp in species]
+		"..".join([d for d in sp.split(':') if d.isdigit() and len(d)>1])).strip('_') for sp in species]
 
 	return transcript_names
-
 
 def process_input(filename,program,fragmented=False):
 	""" Pull species names, abundance, and counts out of input file """
@@ -601,7 +600,8 @@ def process_input(filename,program,fragmented=False):
 	elif program == 'kallisto':
 		input_csv = csv.reader(input_file, 'excel-tab')
 		input_data = [r for r in input_csv]
-		input_data = input_data[1:] #remove header row
+		if type(input_data[0][3]) == str:
+			input_data = input_data[1:] #remove header row
 		raw_est.species = zip(*input_data)[0]
 		raw_est.counts = [float(i) for i in zip(*input_data)[3]]
 		raw_est.abundance = [float(i) for i in zip(*input_data)[4]]
@@ -640,15 +640,18 @@ def process_input(filename,program,fragmented=False):
 
 	raw_est.clean_names()
 	raw_est.remake_index()
-	if not transcripts:
-		#raw_est.remove_matches('rna') # remove specific genes
-		#raw_est.remove_matches('gene_')
-		est = collapse_duplicates(raw_est)
-
-	else:
+	
+	if transcripts:
 		raw_est.remove_matches('plasmid')
 		raw_est.species = fix_transcript_names(raw_est.species)
 		est = raw_est
+	elif functional:
+		raw_est.species = fix_transcript_names(raw_est.species)
+		est = collapse_duplicates(raw_est)
+	else:
+		#raw_est.remove_matches('rna') # remove specific genes
+		#raw_est.remove_matches('gene_')
+		est = collapse_duplicates(raw_est)
 
 	est.convert_to_percentage()
 	est.sort_by_name()
@@ -658,7 +661,7 @@ def process_input(filename,program,fragmented=False):
 		print 'Saving kraken output to file...'
 		cPickle.dump(est,open(filename +'.p','wb'))
 
-	if not transcripts:
+	if not transcripts and not functional:
 		est.species = lookup_tax_list(est.species) # from this point on, species are taxids
 		est.remake_index()
 		est = collapse_duplicates(est)
@@ -946,7 +949,10 @@ def graph_est(est, expname, tier, show_graphs, save_graphs, errors):
 	import seaborn
 
 	# Drop any entry that is above the targeted taxa level
-	filtered_names = list(filter_by_taxa(est.species,tier))
+	try:
+		filtered_names = list(filter_by_taxa(est.species,tier))
+	except:
+		filtered_names = est.species # for functional or transcript level analysis
 
 	if len(est.species) > 100:
 		min_abundances = numpy.mean(est.counts)
@@ -959,7 +965,10 @@ def graph_est(est, expname, tier, show_graphs, save_graphs, errors):
 		if est.lookup_count(sp) > min_abundances: # filter out results with less than min abundances
 			filtered_est.add_record(sp,est.lookup_count(sp),est.lookup_count(sp),est.lookup_size(sp))
 
-	present_species = [tax_dict.get_name_by_id(s) for s in filtered_est.species]
+	if not transcripts and not functional:
+		present_species = [tax_dict.get_name_by_id(s) for s in filtered_est.species]
+	else:
+		present_species = filtered_est.species
 	present_est = list(filtered_est.abundance)
 
 	# graph est abundances
@@ -968,22 +977,27 @@ def graph_est(est, expname, tier, show_graphs, save_graphs, errors):
 	x = numpy.array(range(0,xmax))
 
 	# sort based on est abundances
+
 	all_filter = zip(present_sp,present_est)
 	all_filter.sort( key=lambda x: x[1],reverse=True )
 	fil_sp,fil_est = zip(*all_filter)
 	#fil_est = numpy.log(fil_est)
 
-
 	print "Results that passed filter:"
 	# calculate % for each result
 	fil_per = [round(100*n/math.fsum(fil_est),1) for n in fil_est]
 	all_display = zip(fil_sp,fil_est,fil_per)
-	pprint.pprint(all_display)
+	#pprint.pprint(all_display)
 
+	if transcripts:
+		title = "Human gut metatranscriptome estimated counts"
+	elif functional:
+		title = "Human gut metatranscriptome functional KEGG categories"
+	else:
+		title = "Human gut metatranscriptome {}-level estimated counts".format(tier)
 	plotfunctions.plot_setup_pre(
-		"Human gut metatranscriptome {}-level estimated counts"
-		.format(tier), xlabels = fil_sp, xticks = range(0,xmax),
-		xrotation = -90, yaxislabel = 'Counts')
+		title, xlabels = fil_sp, xticks = range(0,xmax),
+		xrotation = 90, yaxislabel = 'Counts')
 
 	plotfunctions.plot(x, fil_est, color='red', plot_type = 'scatter')
 	matplotlib.pyplot.gca().set_ylim(bottom=0.)
@@ -1009,7 +1023,7 @@ def main(argv=sys.argv):
 	parser.add_argument('-g', '--show-graphs', action='store_true', help='Display graphs of calculated errors')
 	parser.add_argument('-s','--save-graphs', action='store_true', help='Save graphs of calculated errors to file')
 	parser.add_argument('--taxa', default='all', help='Desired taxa level of analysis. Accepts one of: strain, species, genus, phylum. Defaults to all levels.')
-	parser.add_argument('--dataset', default='i100', help='Dataset truth to be compared to. Accepts: i100, simmt_have, simmt_all, simmt_transcripts, no_truth, no_truth_transcripts. Defaults to i100.')
+	parser.add_argument('--dataset', default='i100', help='Dataset truth to be compared to. Accepts: i100, simmt_have, simmt_all, simmt_transcripts, no_truth, no_truth_transcripts, no_truth_functional. Defaults to i100.')
 	parser.add_argument('--bootstraps', default='', help='Directory containing .tsv files for kallisto bootstraps, to be converted into errors.')
 
 	args = parser.parse_args()
@@ -1021,12 +1035,16 @@ def main(argv=sys.argv):
 	save_graphs = args.save_graphs
 	dataset = args.dataset
 
-	no_truth_datasets = ['no_truth','no_truth_transcripts']
+	no_truth_datasets = ['no_truth','no_truth_transcripts','no_truth_functional']
 	transcript_datasets = ['simmt_transcripts','no_truth_transcripts']
 	global transcripts
 	transcripts = False
 	if dataset in transcript_datasets:
 		transcripts = True
+	global functional
+	functional = False
+	if dataset == 'no_truth_functional':
+		functional = True
 
 	print "Running comparison on {}\n".format(filename)
 
@@ -1047,7 +1065,7 @@ def main(argv=sys.argv):
 		print "Saving taxonomy dict..."
 		cPickle.dump(tax_dict,open(os.path.join(scriptdir,'species_taxonomy.pickle'),'wb'))
 
-	if not transcripts:
+	if not transcripts and not functional:
 		est_j_species = collapse_strains(estimated,'species')
 		est_j_genus = collapse_strains(estimated,'genus')
 		est_j_phylum = collapse_strains(estimated,'phylum')
@@ -1074,10 +1092,10 @@ def main(argv=sys.argv):
 
 	if program == 'clark' or program == 'bracken': # clark and bracken don't do strain-level assignment
 		dataset_pairs = [('species',true_j_species,est_j_species),('genus',true_j_genus,est_j_genus),('phylum',true_j_phylum,est_j_phylum)]
-	elif not transcripts:
+	elif not transcripts and not functional:
 		dataset_pairs = [('strain',truth,estimated),('species',true_j_species,est_j_species),('genus',true_j_genus,est_j_genus),('phylum',true_j_phylum,est_j_phylum)]
 
-	if args.taxa == 'strain' or transcripts:
+	if args.taxa == 'strain' or transcripts or functional:
 		dataset_pairs = [('strain',truth,estimated)]
 	elif args.taxa == 'species':
 		dataset_pairs = [('species',true_j_species,est_j_species)]
