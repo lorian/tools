@@ -18,11 +18,16 @@ with open('gene_ReadCount_dataset.txt','r') as transcripts:
 			# standard location
 			try:
 				taxid = records[0]['GBSeq_feature-table'][0]['GBFeature_quals'][-1]['GBQualifier_value'].partition(':')[2]
+			except:
+				pass
+				
 			if not taxid:
 				# sometimes it's not the last quals list, so we have to search for it
 				try:
 					taxid = [r['GBQualifier_value'] for r in records[0]['GBSeq_feature-table'][0]['GBFeature_quals'] if ('taxon' in r['GBQualifier_value'])][0].partition(':')[2]
-			
+				except:
+					pass
+					
 			if taxid.isdigit():
 				mfa.write('taxid|'+ taxid +'|'+ line)
 			else:
