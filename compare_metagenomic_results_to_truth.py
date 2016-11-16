@@ -273,7 +273,9 @@ def collapse_duplicates(raw_data):
 	set_sz = {}
 	set_plasmids = {}
 	for sp,ab,co in dup_data:
-		if 'taxid' in sp or 'gi_' in sp or 'gca_' in sp or 'gi|' in sp: # retain useful information
+		if type(sp) == int or sp.isdigit(): # already taxid
+			name = sp
+		elif 'taxid' in sp or 'gi_' in sp or 'gca_' in sp or 'gi|' in sp: # retain useful information
 			name = sp.rpartition('|')[0] # last segment is usually the original chromosome etc name
 		else:
 			name = sp.partition('_gi|')[0].partition('|')[0].partition('_gca')[0] #the prepended strain name
@@ -418,7 +420,7 @@ def get_taxid(original_name):
 		if taxid:
 			return taxid
 
-	name = original_name.partition('|')[0].lower().replace('_',' ').strip()
+	name = original_name.partition('|')[0].lower().replace('_',' ').strip().strip(' gi')
 	if name in known_names.keys(): # problematic names
 		name = known_names[name]
 
@@ -520,6 +522,7 @@ def lookup_tax(original_name):
 
 def lookup_tax_list(species_list):
 	species_tax = []
+	lookup_tax('Bacteria') # as the default
 	for name in species_list:
 		if not(len(name) == 8 and name[0:2].isalpha() and name[3:7].isdigit()):
 			# skip unlookupable entries like CJG34856
@@ -531,7 +534,7 @@ def lookup_tax_list(species_list):
 					add_to_list = lookup_tax(name.rpartition('_')[0]).taxid
 				except:
 					print "Unable to find {} -- complete failure".format(name)
-					add_to_list = 2 # bacteria
+					add_to_list = '2' # bacteria
 		species_tax.append(add_to_list)
 	return species_tax
 
