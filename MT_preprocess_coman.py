@@ -16,10 +16,12 @@ with open('gene_ReadCount_dataset.txt','r') as transcripts:
 			handle = Entrez.efetch("nucleotide", id=uid, retmode="xml")
 			records = Entrez.read(handle)
 			# standard location
-			taxid = records[0]['GBSeq_feature-table'][0]['GBFeature_quals'][-1]['GBQualifier_value'].partition(':')[2]
+			try:
+				taxid = records[0]['GBSeq_feature-table'][0]['GBFeature_quals'][-1]['GBQualifier_value'].partition(':')[2]
 			if not taxid:
 				# sometimes it's not the last quals list, so we have to search for it
-				taxid = [r['GBQualifier_value'] for r in records[0]['GBSeq_feature-table'][0]['GBFeature_quals'] if ('taxon' in r['GBQualifier_value'])][0].partition(':')[2]
+				try:
+					taxid = [r['GBQualifier_value'] for r in records[0]['GBSeq_feature-table'][0]['GBFeature_quals'] if ('taxon' in r['GBQualifier_value'])][0].partition(':')[2]
 			
 			if taxid.isdigit():
 				mfa.write('taxid|'+ taxid +'|'+ line)
