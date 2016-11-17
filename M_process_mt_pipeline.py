@@ -22,8 +22,8 @@ for sp in hits:
 			break
 	if not success:
 		failed_hits.append(sp)
-		for genus in genuses: # iterate over just genus name
-			output = os.system("mv {}* ../".format(genus))
+		#for genus in genuses: # iterate over just genus name
+		#	output = os.system("mv {}* ../".format(genus))
 
 pprint.pprint(failed_hits)
 print "Got: {0} \tMissed: {1}".format(len(hits),len(failed_hits))
