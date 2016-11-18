@@ -44,8 +44,7 @@ if not os.path.exists('gene_annotation.txt'):
 		for k,v in annotation_dict.items():
 			dict_file.write(k +'|'+ v +'\n')
 '''
-		
-'''
+
 # annotate kallisto output
 anno_kallisto = open('annotated_'+args.filename,'w')
 with open(args.filename,'r') as input_file:
@@ -57,4 +56,4 @@ with open(args.filename,'r') as input_file:
 			anno_kallisto.write('Unknown|'+ line)
 		
 anno_kallisto.close()
-'''
+
