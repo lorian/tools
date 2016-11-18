@@ -2,6 +2,8 @@ import csv
 import argparse
 import cPickle
 import os
+import pprint
+import collections
 
 parser = argparse.ArgumentParser(description='Look up KEGG pathways from kallisto abundance estimations of genes')
 parser.add_argument('filename', help='kallisto abundance.tsv file')
@@ -17,15 +19,14 @@ else:
 	pathway_data = [r for r in pathway_csv]
 	pathway_data = pathway_data[8:] # remove header lines
 
-	pathway_dict = dict()
+	pathway_dict = collections.defaultdict(set)
 	for line in pathway_data:
 		if line[0] == 'B':
 			#B  <b>Cell motility</b>
 			pathway = ' '.join(line).partition('<b>')[2].partition('</b>')[0]
 		elif line[0] == 'D':
-			pathway_dict[line[1]] = pathway
-
-
+			pathway_dict[line[1]].add(pathway)
+	
 	# get dict of gene ids to KO ids
 	ortho_files = [f for f in os.listdir('.') if f.startswith("meta.ortho_")]
 	annotation_dict = dict()
@@ -41,12 +42,14 @@ else:
 	cPickle.dump(annotation_dict,open('gene_annotation.pickle','wb'))
 
 # save dict as file
+'''
 if not os.path.exists('gene_annotation.txt'):
 	with open('gene_annotation.txt','w') as dict_file:
 		for k,v in annotation_dict.items():
 			dict_file.write(k +'|'+ v +'\n')
+'''
 		
-		
+'''
 # annotate kallisto output
 anno_kallisto = open('annotated_'+args.filename,'w')
 with open(args.filename,'r') as input_file:
@@ -55,7 +58,7 @@ with open(args.filename,'r') as input_file:
 		try:
 			anno_kallisto.write(annotation_dict[gene] +'|'+ line)
 		except:
-			anno_kallisto.write(line)
+			anno_kallisto.write('Unknown|'+ line)
 		
 anno_kallisto.close()
-	
+'''
