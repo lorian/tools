@@ -385,6 +385,7 @@ def get_taxid(original_name):
 						("erwinia tasmaniensis strain et199",'Erwinia tasmaniensis ET1/99'),
 						('lawsonia intracellularis phemn1 00','Lawsonia intracellularis PHE/MN1-00'),
 						('ignicoccus hospitalis kin4 i','Ignicoccus hospitalis KIN4/I'),
+						('ignicoccus hospitalis kin4i','Ignicoccus hospitalis KIN4/I'),
 						])
 
 	tax_entry = tax_dict.get_taxa_by_name(original_name) # skip the lookup if taxa was already found
@@ -540,14 +541,28 @@ def lookup_tax_list(species_list):
 
 def fix_transcript_names(species):
 	cleanup = string.maketrans('-()+/','_____')
+	# need format bradyrhizobium_sp_btai1_6633864..6636812
 	transcript_names = [(sp.partition("|")[0].translate(cleanup,'.[]') +"_"+
 		"..".join([d for d in sp.split(':') if d.isdigit() and len(d)>1])).strip('_') for sp in species]
-
+			
 	return transcript_names
 
 def process_input(filename,program,fragmented=False):
 	""" Pull species names, abundance, and counts out of input file """
 
+	if os.path.exists(filename +'.p'): # pickled version of very large file
+		print "Loading pickle..."
+		raw_est = cPickle.load(open(filename +'.p','rb'))
+		raw_est.clean_names()
+		raw_est.remake_index()
+		est = collapse_duplicates(raw_est)
+		est.set_threshold()
+		est.species = lookup_tax_list(est.species) # from this point on, species are taxids
+		est.remake_index()
+		est = collapse_duplicates(est)
+		est.remake_index()
+		return est
+		
 	suffix = filename.rpartition('.')[2]
 	input_file = open(filename,'r')
 
@@ -641,11 +656,12 @@ def process_input(filename,program,fragmented=False):
 
 	print "Number of raw entries: {0}".format(len(raw_est.species))
 
-	raw_est.clean_names()
+	if not transcripts:
+		raw_est.clean_names()
 	raw_est.remake_index()
 	
 	if transcripts:
-		raw_est.remove_matches('plasmid')
+		# raw_est.remove_matches('plasmid') #removes plasmid-related genes!
 		raw_est.species = fix_transcript_names(raw_est.species)
 		est = raw_est
 	elif functional:
@@ -706,7 +722,7 @@ def filter_by_taxa(taxids,rank):
 	filtered_names = set()
 	for taxid in taxids:
 		id_taxa = tax_dict.get_taxa_by_id(taxid)
-		filtered_names.add(id_taxa.filter_tier(rank))
+		filtered_names.add(id_taxa.filter_tier_exact(rank))
 
 	filtered_names.discard(0) # 0 is returned if a name doesn't pass the rank filter
 
@@ -850,6 +866,16 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		#		cutoff_file.write("{},{}\n".format(ab[0],ab[1]))
 		#pprint.pprint(sorted([d for d in disp_ab if d[2] > 0],key=lambda x: x[1]))
 
+	# to make MA plot for transcripts
+	log_true = [math.log(x,2) if x>0 else math.log(0.01,2) for x in all_true]
+	log_est = [math.log(x,2) if x>0 else math.log(0.01,2) for x in all_est]
+	xmax = len(all_species)
+	print xmax
+	plotfunctions.plot_setup_pre(xticks = range(0,xmax),
+			xrotation = -90, yaxislabel = 'Counts', xlabels = [""]*xmax)
+	plotfunctions.plot(log_true, log_est)
+	plotfunctions.plot_setup_post(save_file = expname +'_'+ tier +'_versus.png')
+
 	all_diff = []
 	for i,a in enumerate(all_est):
 		try:
@@ -866,8 +892,14 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		ab_filter.sort( key=lambda x: x[1],reverse=True )
 		ab_species,ab_true,ab_adjusted = zip(*ab_filter)
 
-		plotfunctions.plot_setup_pre("{} estimated counts at {}-level"
-			.format(program,tier), xlabels = ab_species,
+		'''
+		for r in ab_filter:
+			if r[2] < 10: # no estimated counts
+				print r
+		'''
+
+		title = "{} estimated counts at {}-level".format(program,tier)
+		plotfunctions.plot_setup_pre(xlabels = ab_species,
 			xticks = range(0,xmax), xrotation = -90, yaxislabel = 'Counts')
 
 		plotfunctions.plot(x, ab_true, color='blue', label='True')
@@ -881,7 +913,7 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 	# graph abundances for all species, not just the true ones, if above mean
 	else:
 		if len(est.species) - filtered_est.counts.count(0) > len(truth.species)*1.25:
-				mean_ab = min(truth.counts)/10 #10% of lowest actual count in truth
+				mean_ab = min(truth.counts)#/10 #10% of lowest actual count in truth
 				print "Filtering out any estimated results under {} counts".format(mean_ab)
 		else:
 			mean_ab = 1
@@ -900,6 +932,9 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 			present = present[:500]
 		present_species, present_true, present_est = zip(*present)
 		present_errors = [0]*500
+		
+		errors = [t for t in present if t[2] < 10]
+		#pprint.pprint(errors)
 
 		if not transcripts:
 			present_true = []
@@ -923,17 +958,22 @@ def graph_error(truth, est, adjusted_abundance, diff, expname, tier, norm_factor
 		all_sort.sort( key=lambda x: x[1],reverse=True )
 		#all_sort.sort(key=lambda x: x[0]) #sort by name for troubleshooting
 
-		'''
+		
 		for r in all_sort:
-			#if r[2] == 0: # no estimated counts
-			print r
-		'''
+			if r[0].startswith('Ignicoccus'):
+				print r
+		
 		present_species,present_true,present_est,present_errors = zip(*all_sort)
 
-		plotfunctions.plot_setup_pre(
-			"{} estimated counts at {}-level"
-			.format(program,tier), xticks = range(0,xmax),
+		if transcripts:
+			title = "Estimated counts of high-expression transcripts"
+		else:
+			title = "{} estimated counts at {}-level".format(program,tier)
+			
+		plotfunctions.plot_setup_pre(xticks = range(0,xmax),
 			xrotation = -90, yaxislabel = 'Counts', xlabels = present_species)
+		#plotfunctions.plot_setup_pre(xticks = range(0,xmax),
+		#	xrotation = -90, yaxislabel = 'Counts', xlabels = [""]*xmax)
 
 		plotfunctions.plot(x, present_true, color='blue', label="True")
 		plotfunctions.plot(x, present_est, plot_type = 'error', color='red', label="Estimated", fmt='o', yerr=present_errors)
@@ -992,14 +1032,25 @@ def graph_est(est, expname, tier, show_graphs, save_graphs, errors):
 	all_display = zip(fil_sp,fil_est,fil_per)
 	#pprint.pprint(all_display)
 
+	# print present species
+	with open('species_hits.txt','w') as cutoff_file:
+		for ab in all_display:
+			cutoff_file.write("{},{}\n".format(ab[0],ab[1]))
+
+	# for importing into excel to produce functional plot
+	#for f in fil_sp:
+	#	print f
+	#for f in fil_per:
+	#	print f
+		
 	if transcripts:
 		title = "Human gut metatranscriptome estimated counts"
 	elif functional:
 		title = "Human gut metatranscriptome functional KEGG categories"
 	else:
-		title = "Human gut metatranscriptome {}-level estimated counts".format(tier)
+		title = "Human gut metagenome {}-level estimated counts".format(tier)
 	plotfunctions.plot_setup_pre(
-		title, xlabels = fil_sp, xticks = range(0,xmax),
+		xlabels = fil_sp, xticks = range(0,xmax),
 		xrotation = 90, yaxislabel = 'Counts')
 
 	plotfunctions.plot(x, fil_est, color='red', plot_type = 'scatter')
@@ -1008,7 +1059,7 @@ def graph_est(est, expname, tier, show_graphs, save_graphs, errors):
 		plotfunctions.plot_setup_post(save_file = expname +'_'+ tier +'_estabundances.png', show=show_graphs)
 	else:
 		plotfunctions.plot_setup_post(legend=False)
-
+	
 	return
 
 
@@ -1067,7 +1118,7 @@ def main(argv=sys.argv):
 	if pickle_len != len(tax_dict.names.keys()): # don't re-pickle if nothing new is added
 		print "Saving taxonomy dict..."
 		cPickle.dump(tax_dict,open(os.path.join(scriptdir,'species_taxonomy.pickle'),'wb'))
-
+	
 	if not transcripts and not functional:
 		est_j_species = collapse_strains(estimated,'species')
 		est_j_genus = collapse_strains(estimated,'genus')
@@ -1075,7 +1126,7 @@ def main(argv=sys.argv):
 		true_j_species = collapse_strains(truth,'species')
 		true_j_genus = collapse_strains(truth,'genus')
 		true_j_phylum = collapse_strains(truth,'phylum')
-
+	
 	bootstrap_counts = collections.defaultdict(int)
 	if args.bootstraps:
 		# process each file with process_input, then make summary stats
